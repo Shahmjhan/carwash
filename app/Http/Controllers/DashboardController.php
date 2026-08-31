@@ -33,6 +33,17 @@ class DashboardController extends Controller {public function __construct(privat
         ->orderByDesc('count')
         ->limit(5)
         ->get();
+    
+    // Get low stock items
+    $lowStockItems = Product::where('quantity', '<=', 10)
+        ->orderBy('quantity', 'asc')
+        ->limit(10)
+        ->get();
+    
+    // Calculate payment rate
+    $totalInvoices = Invoice::count();
+    $paidInvoices = Invoice::where('status', 'paid')->count();
+    $paymentRate = $totalInvoices > 0 ? round(($paidInvoices / $totalInvoices) * 100, 1) : 0;
 
     return view('dashboard.index',[
         'vehiclesToday'=>Vehicle::whereHas('customer',fn($q)=>$branch?$q->where('branch_id',$branch):$q)->whereDate('created_at',today())->count(),
@@ -45,5 +56,7 @@ class DashboardController extends Controller {public function __construct(privat
         'monthlyJobs'=>$metrics['this_month']['jobs'],
         'vehicleRevenue'=>$vehicleRevenue,
         'frequentCustomers'=>$frequentCustomers,
-        'servicePopularity'=>$servicePopularity
+        'servicePopularity'=>$servicePopularity,
+        'lowStockItems'=>$lowStockItems,
+        'paymentRate'=>$paymentRate
     ]);}}

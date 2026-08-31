@@ -80,6 +80,14 @@
         <small>Monthly Jobs</small>
         <b>{{ $monthlyJobs ?? 0 }}</b>
     </div>
+    <div class="stat-card-secondary">
+        <small>Avg Job Value</small>
+        <b>{{ $monthlyJobs > 0 ? number_format($monthlyRevenue / $monthlyJobs, 2) : '0.00' }}</b>
+    </div>
+    <div class="stat-card-secondary">
+        <small>Payment Rate</small>
+        <b>{{ $paymentRate ?? 0 }}%</b>
+    </div>
 </div>
 
 <div class="grid2">
@@ -145,32 +153,23 @@
 </div>
 
 <div class="panel panel-full">
-    <h2>Recent Activity</h2>
-    <div class="activity-list">
-        <div class="activity-item">
-            <span class="activity-icon">📋</span>
-            <div class="activity-content">
-                <strong>New job created</strong>
-                <small>Job #JOB-2026-000001 for Toyota Camara</small>
+    <h2>📦 Low Stock Items</h2>
+    <div class="stock-list">
+        @if($lowStockItems->count() > 0)
+            @foreach($lowStockItems as $item)
+            <div class="stock-item">
+                <div class="stock-info">
+                    <strong>{{ $item->name }}</strong>
+                    <small>{{ $item->category ?? 'Uncategorized' }}</small>
+                </div>
+                <div class="stock-quantity {{ $item->quantity <= 5 ? 'critical' : 'warning' }}">
+                    {{ $item->quantity }} {{ $item->unit ?? 'pcs' }}
+                </div>
             </div>
-            <span class="activity-time">2 min ago</span>
-        </div>
-        <div class="activity-item">
-            <span class="activity-icon">💰</span>
-            <div class="activity-content">
-                <strong>Payment received</strong>
-                <small>Rs. 5,000.00 for Invoice #INV-2026-000001</small>
-            </div>
-            <span class="activity-time">15 min ago</span>
-        </div>
-        <div class="activity-item">
-            <span class="activity-icon">✅</span>
-            <div class="activity-content">
-                <strong>Job completed</strong>
-                <small>Job #JOB-2026-000002 delivered to customer</small>
-            </div>
-            <span class="activity-time">1 hour ago</span>
-        </div>
+            @endforeach
+        @else
+            <p class="no-data">All items are well stocked</p>
+        @endif
     </div>
 </div>
 
@@ -562,6 +561,65 @@
     color: #999;
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+/* Stock List Styles */
+.stock-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stock-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.stock-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.stock-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.stock-info strong {
+    display: block;
+    font-size: 14px;
+    color: #1a1a2e;
+    margin-bottom: 2px;
+}
+
+.stock-info small {
+    display: block;
+    font-size: 12px;
+    color: #666;
+}
+
+.stock-quantity {
+    font-weight: 700;
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: #fff3cd;
+    color: #856404;
+}
+
+.stock-quantity.critical {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.stock-quantity.warning {
+    background: #fff3cd;
+    color: #856404;
 }
 
 /* Insights Styles */
