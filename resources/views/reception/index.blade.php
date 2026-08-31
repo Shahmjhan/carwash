@@ -10,18 +10,22 @@
     $customBgColor = $settings['custom_background_color'] ?? '';
     
     $bgStyle = '';
+    $hasCustomBg = false;
     if ($bgType === 'color' && $customBgColor) {
         $bgStyle = "background: {$customBgColor};";
+        $hasCustomBg = true;
     } elseif ($bgType === 'color' && $bgColor) {
         $bgStyle = "background: {$bgColor};";
+        $hasCustomBg = true;
     } elseif ($bgImage) {
         $bgStyle = "background-image: url('{{ asset($bgImage) }}');";
+        $hasCustomBg = true;
     } else {
         $bgStyle = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);";
     }
 @endphp
 
-<div class="reception-container" style="{{ $bgStyle }}">
+<div class="reception-container {{ $hasCustomBg ? 'custom-bg' : '' }}" style="{{ $bgStyle }}">
     <div id="toastContainer"></div>
     
     <!-- Navigation Menu -->
@@ -684,6 +688,11 @@ document.addEventListener('click', (e) => {
         linear-gradient(135deg, rgba(3, 7, 18, 0.78) 0%, rgba(8, 15, 30, 0.82) 50%, rgba(4, 10, 22, 0.88) 100%);
     z-index: 0;
     pointer-events: none;
+}
+
+/* Remove dark overlay when custom background is set */
+.reception-container.custom-bg::before {
+    display: none;
 }
 
 .reception-container > * {
