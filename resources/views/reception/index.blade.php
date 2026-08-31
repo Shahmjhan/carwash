@@ -1,31 +1,41 @@
+
 @extends('layouts.reception')
 
 @section('content')
 @php
     $business = auth()->user()->business;
     $settings = $business ? $business->getBillingSettings() : [];
+
     $bgType = $settings['background_type'] ?? 'image';
     $bgImage = $settings['reception_background_image'] ?? '';
     $bgColor = $settings['background_color'] ?? '';
     $customBgColor = $settings['custom_background_color'] ?? '';
-    
-    $bgStyle = '';
-    $hasCustomBg = false;
+
     if ($bgType === 'color' && $customBgColor) {
-        $bgStyle = "background: {$customBgColor};";
-        $hasCustomBg = true;
+        $receptionBackground = $customBgColor;
+        $receptionBackgroundType = 'color';
     } elseif ($bgType === 'color' && $bgColor) {
-        $bgStyle = "background: {$bgColor};";
-        $hasCustomBg = true;
+        $receptionBackground = $bgColor;
+        $receptionBackgroundType = 'color';
     } elseif ($bgImage) {
-        $bgStyle = "background-image: url('{{ asset($bgImage) }}');";
-        $hasCustomBg = true;
+        $receptionBackground = "url('" . asset($bgImage) . "')";
+        $receptionBackgroundType = 'image';
     } else {
-        $bgStyle = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);";
+        $receptionBackground = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        $receptionBackgroundType = 'color';
     }
 @endphp
 
-<div class="reception-container {{ $hasCustomBg ? 'custom-bg' : '' }}" style="{{ $bgStyle }}">
+<style>
+    :root {
+        --reception-background: {!! $receptionBackground !!};
+    }
+</style>
+
+<div class="reception-container"
+    @if($receptionBackgroundType === 'image')
+        style="--reception-background: {{ $receptionBackground }};"
+    @endif>
     <div id="toastContainer"></div>
     
     <!-- Navigation Menu -->
@@ -664,16 +674,21 @@ document.addEventListener('click', (e) => {
 }
 
 .reception-container {
-    max-width: 1200px;
-    margin: 0 auto;
+    margin: 0;
     padding: 40px 20px;
     min-height: 100vh;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+
+    background: var(--reception-background);
+
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+
     position: relative;
-    width: 100%;
     overflow-x: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -682,17 +697,27 @@ document.addEventListener('click', (e) => {
     content: '';
     position: fixed;
     inset: 0;
+
     background:
-        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.10), transparent 35%),
-        radial-gradient(circle at 85% 75%, rgba(56, 189, 248, 0.08), transparent 35%),
-        linear-gradient(135deg, rgba(3, 7, 18, 0.78) 0%, rgba(8, 15, 30, 0.82) 50%, rgba(4, 10, 22, 0.88) 100%);
+        radial-gradient(
+            circle at 15% 20%,
+            rgba(125, 211, 252, 0.10),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 85% 75%,
+            rgba(56, 189, 248, 0.08),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            rgba(3, 7, 18, 0.38) 0%,
+            rgba(8, 15, 30, 0.42) 50%,
+            rgba(4, 10, 22, 0.48) 100%
+        );
+
     z-index: 0;
     pointer-events: none;
-}
-
-/* Remove dark overlay when custom background is set */
-.reception-container.custom-bg::before {
-    display: none;
 }
 
 .reception-container > * {
@@ -708,6 +733,9 @@ document.addEventListener('click', (e) => {
     text-align: center;
     margin-bottom: 44px;
     padding: 36px 20px 0;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .reception-header h1 {
@@ -717,8 +745,6 @@ document.addEventListener('click', (e) => {
     font-weight: 700;
     letter-spacing: -0.5px;
     line-height: 1.2;
-    animation: blink 2s ease-in-out infinite;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .reception-header p {
@@ -726,29 +752,6 @@ document.addEventListener('click', (e) => {
     font-size: 18px;
     margin: 0;
     font-weight: 400;
-    animation: blink 2s ease-in-out infinite;
-    animation-delay: 0.5s;
-    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
-}
-
-@keyframes blink {
-    0%, 100% {
-        opacity: 1;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        opacity: 0.7;
-        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(74, 144, 226, 0.3);
-    }
-}
-
-.reception-header h1:hover {
-    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(74, 144, 226, 0.3);
-    transform: scale(1.02);
-}
-
-.reception-header p:hover {
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 20px rgba(74, 144, 226, 0.2);
 }
 
 /* ---------------------------------------------------------
@@ -827,6 +830,9 @@ document.addEventListener('click', (e) => {
 .search-section {
     margin-bottom: 30px;
     position: relative;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .search-box {
@@ -841,7 +847,11 @@ document.addEventListener('click', (e) => {
     border: 1px solid var(--panel-border);
     border-radius: 16px;
     font-size: 18px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(125, 211, 252, 0.07));
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.14),
+        rgba(255, 255, 255, 0.06)
+    );
     color: var(--text);
     backdrop-filter: blur(24px) saturate(140%);
     -webkit-backdrop-filter: blur(24px) saturate(140%);
@@ -1245,7 +1255,11 @@ document.addEventListener('click', (e) => {
 
 .modal-content {
     position: relative;
-    background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(30, 64, 175, 0.10));
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.16),
+        rgba(255, 255, 255, 0.07)
+    );
     border: 1px solid var(--panel-border);
     border-radius: 20px;
     width: 90%;
