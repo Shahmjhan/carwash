@@ -1,31 +1,32 @@
+
 @extends('layouts.reception')
 
 @section('content')
 @php
     $business = auth()->user()->business;
     $settings = $business ? $business->getBillingSettings() : [];
+
     $bgType = $settings['background_type'] ?? 'image';
     $bgImage = $settings['reception_background_image'] ?? '';
     $bgColor = $settings['background_color'] ?? '';
     $customBgColor = $settings['custom_background_color'] ?? '';
-    
-    $bgStyle = '';
-    $hasCustomBg = false;
+
     if ($bgType === 'color' && $customBgColor) {
-        $bgStyle = "background: {$customBgColor};";
-        $hasCustomBg = true;
+        $receptionBackground = $customBgColor;
+        $receptionBackgroundType = 'color';
     } elseif ($bgType === 'color' && $bgColor) {
-        $bgStyle = "background: {$bgColor};";
-        $hasCustomBg = true;
+        $receptionBackground = $bgColor;
+        $receptionBackgroundType = 'color';
     } elseif ($bgImage) {
-        $bgStyle = "background-image: url('{{ asset($bgImage) }}');";
-        $hasCustomBg = true;
+        $receptionBackground = "url('" . asset($bgImage) . "')";
+        $receptionBackgroundType = 'image';
     } else {
-        $bgStyle = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);";
+        $receptionBackground = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        $receptionBackgroundType = 'color';
     }
 @endphp
 
-<div class="reception-container {{ $hasCustomBg ? 'custom-bg' : '' }}" style="{{ $bgStyle }}">
+<div class="reception-container" style="{{ $bgStyle }}">
     <div id="toastContainer"></div>
     
     <!-- Navigation Menu -->
@@ -664,16 +665,21 @@ document.addEventListener('click', (e) => {
 }
 
 .reception-container {
-    max-width: 1200px;
-    margin: 0 auto;
+    margin: 0;
     padding: 40px 20px;
     min-height: 100vh;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+
+    background: var(--reception-background);
+
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+
     position: relative;
-    width: 100%;
     overflow-x: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -682,10 +688,25 @@ document.addEventListener('click', (e) => {
     content: '';
     position: fixed;
     inset: 0;
+
     background:
-        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.10), transparent 35%),
-        radial-gradient(circle at 85% 75%, rgba(56, 189, 248, 0.08), transparent 35%),
-        linear-gradient(135deg, rgba(3, 7, 18, 0.78) 0%, rgba(8, 15, 30, 0.82) 50%, rgba(4, 10, 22, 0.88) 100%);
+        radial-gradient(
+            circle at 15% 20%,
+            rgba(125, 211, 252, 0.10),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 85% 75%,
+            rgba(56, 189, 248, 0.08),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            rgba(3, 7, 18, 0.38) 0%,
+            rgba(8, 15, 30, 0.42) 50%,
+            rgba(4, 10, 22, 0.48) 100%
+        );
+
     z-index: 0;
     pointer-events: none;
 }
@@ -708,6 +729,9 @@ document.addEventListener('click', (e) => {
     text-align: center;
     margin-bottom: 44px;
     padding: 36px 20px 0;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .reception-header h1 {
@@ -827,6 +851,9 @@ document.addEventListener('click', (e) => {
 .search-section {
     margin-bottom: 30px;
     position: relative;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .search-box {
@@ -841,7 +868,11 @@ document.addEventListener('click', (e) => {
     border: 1px solid var(--panel-border);
     border-radius: 16px;
     font-size: 18px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(125, 211, 252, 0.07));
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.14),
+        rgba(255, 255, 255, 0.06)
+    );
     color: var(--text);
     backdrop-filter: blur(24px) saturate(140%);
     -webkit-backdrop-filter: blur(24px) saturate(140%);
@@ -1245,7 +1276,11 @@ document.addEventListener('click', (e) => {
 
 .modal-content {
     position: relative;
-    background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(30, 64, 175, 0.10));
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.16),
+        rgba(255, 255, 255, 0.07)
+    );
     border: 1px solid var(--panel-border);
     border-radius: 20px;
     width: 90%;
