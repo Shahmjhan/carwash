@@ -87,6 +87,14 @@
                     </div>
                     
                     <div class="summary-row">
+                        <span>Services Total</span>
+                        <span>Rs. {{ number_format($job->services->sum(fn($s) => $s->unit_price * $s->quantity), 2) }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Parts Total</span>
+                        <span>Rs. {{ number_format($job->parts->sum(fn($p) => $p->unit_price * $p->quantity), 2) }}</span>
+                    </div>
+                    <div class="summary-row">
                         <span>Subtotal</span>
                         <span>Rs. {{ number_format($job->invoice->subtotal, 2) }}</span>
                     </div>
@@ -102,29 +110,65 @@
                     <form method="post" action="{{ route('cashier.process-payment', $job) }}" id="paymentForm">
                         @csrf
                         <div class="form-section">
-                            <label>Payment Method</label>
-                            <div class="payment-methods">
-                                <label class="payment-method-option">
-                                    <input type="radio" name="payment_method" value="cash" checked>
-                                    <span class="method-icon">💵</span>
-                                    <span class="method-label">Cash</span>
-                                </label>
-                                <label class="payment-method-option">
-                                    <input type="radio" name="payment_method" value="card">
-                                    <span class="method-icon">💳</span>
-                                    <span class="method-label">Card</span>
-                                </label>
-                                <label class="payment-method-option">
-                                    <input type="radio" name="payment_method" value="upi">
-                                    <span class="method-icon">📱</span>
-                                    <span class="method-label">UPI</span>
-                                </label>
-                                <label class="payment-method-option">
-                                    <input type="radio" name="payment_method" value="bank_transfer">
-                                    <span class="method-icon">🏦</span>
-                                    <span class="method-label">Bank Transfer</span>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <label style="margin: 0; font-size: 16px; font-weight: 600; color: #1e293b;">Payment Method</label>
+                                <label class="split-toggle">
+                                    <input type="checkbox" id="splitPaymentToggle" onchange="toggleSplitPayment()">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Enable Split Payment</span>
                                 </label>
                             </div>
+                            
+                            <div id="singlePaymentSection">
+                                <div class="payment-methods">
+                                    <label class="payment-method-option">
+                                        <input type="radio" name="payment_method" value="cash" checked onchange="toggleReferenceField()">
+                                        <span class="method-icon">💵</span>
+                                        <span class="method-label">Cash</span>
+                                    </label>
+                                    <label class="payment-method-option">
+                                        <input type="radio" name="payment_method" value="card" onchange="toggleReferenceField()">
+                                        <span class="method-icon">💳</span>
+                                        <span class="method-label">Card</span>
+                                    </label>
+                                    <label class="payment-method-option">
+                                        <input type="radio" name="payment_method" value="upi" onchange="toggleReferenceField()">
+                                        <span class="method-icon">📱</span>
+                                        <span class="method-label">UPI</span>
+                                    </label>
+                                    <label class="payment-method-option">
+                                        <input type="radio" name="payment_method" value="bank_transfer" onchange="toggleReferenceField()">
+                                        <span class="method-icon">🏦</span>
+                                        <span class="method-label">Bank Transfer</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div id="splitPaymentSection" style="display: none;">
+                                <div id="paymentRows">
+                                    <div class="payment-row" data-row="0">
+                                        <select class="split-method" onchange="updateSplitReference(this)">
+                                            <option value="cash">Cash</option>
+                                            <option value="card">Card</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="bank_transfer">Bank Transfer</option>
+                                        </select>
+                                        <input type="number" step=".01" class="split-amount" placeholder="Amount" oninput="calculateSplitTotal()">
+                                        <input type="text" class="split-reference" placeholder="Reference (if needed)" style="display: none;">
+                                        <button type="button" class="remove-row-btn" onclick="removePaymentRow(this)" style="display: none;">×</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="add-row-btn" onclick="addPaymentRow()">+ Add Payment Method</button>
+                                <div class="split-summary">
+                                    <span>Total Split: <strong id="splitTotal">Rs. 0.00</strong></span>
+                                    <span>Remaining: <strong id="splitRemaining">Rs. {{ number_format($job->invoice->total, 2) }}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section" id="referenceField" style="display: none;">
+                            <label id="referenceLabel">Reference Number</label>
+                            <input type="text" name="reference_number" id="referenceNumber" placeholder="Enter reference number">
                         </div>
                         
                         <div class="form-section">
@@ -142,9 +186,54 @@
                                 </select>
                             </div>
                             <div class="form-section">
-                                <label>Discount Value</label>
-                                <input type="number" step=".01" name="discount_value" id="discountValue" placeholder="0.00" oninput="calculateTotal()">
+                                <label>Apply To</label>
+                                <select name="discount_apply_to" id="discountApplyTo" onchange="toggleDiscountSection()">
+                                    <option value="total">Total Amount</option>
+                                    <option value="services">Services Only</option>
+                                    <option value="parts">Parts Only</option>
+                                    <option value="individual_services">Individual Services</option>
+                                    <option value="individual_parts">Individual Parts</option>
+                                </select>
                             </div>
+                        </div>
+                        
+                        <div class="form-section" id="globalDiscountSection">
+                            <label>Discount Value</label>
+                            <input type="number" step=".01" name="discount_value" id="discountValue" placeholder="0.00" oninput="calculateTotal()">
+                        </div>
+                        
+                        <div class="form-section" id="individualServicesSection" style="display: none;">
+                            <label>Individual Service Discounts</label>
+                            @foreach($job->services as $index => $service)
+                                <div class="individual-discount-row">
+                                    <span class="item-name">{{ $service->name_snapshot }} (Rs. {{ number_format($service->unit_price * $service->quantity, 2) }})</span>
+                                    <div class="discount-inputs">
+                                        <select class="item-discount-type" data-item-type="service" data-item-index="{{ $index }}" onchange="calculateIndividualDiscounts()">
+                                            <option value="none">No Discount</option>
+                                            <option value="amount">Fixed</option>
+                                            <option value="percentage">Percentage</option>
+                                        </select>
+                                        <input type="number" step=".01" class="item-discount-value" data-item-type="service" data-item-index="{{ $index }}" data-item-price="{{ $service->unit_price * $service->quantity }}" placeholder="0.00" oninput="calculateIndividualDiscounts()">
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        
+                        <div class="form-section" id="individualPartsSection" style="display: none;">
+                            <label>Individual Part Discounts</label>
+                            @foreach($job->parts as $index => $part)
+                                <div class="individual-discount-row">
+                                    <span class="item-name">{{ $part->product->name }} (Rs. {{ number_format($part->unit_price * $part->quantity, 2) }})</span>
+                                    <div class="discount-inputs">
+                                        <select class="item-discount-type" data-item-type="part" data-item-index="{{ $index }}" onchange="calculateIndividualDiscounts()">
+                                            <option value="none">No Discount</option>
+                                            <option value="amount">Fixed</option>
+                                            <option value="percentage">Percentage</option>
+                                        </select>
+                                        <input type="number" step=".01" class="item-discount-value" data-item-type="part" data-item-index="{{ $index }}" data-item-price="{{ $part->unit_price * $part->quantity }}" placeholder="0.00" oninput="calculateIndividualDiscounts()">
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                         
                         <div class="form-section">
@@ -202,27 +291,27 @@
 <style>
 .payment-page {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     padding: 0;
 }
 
 .payment-header {
-    background: rgba(255, 255, 255, 0.1);
+    background: white;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid #e2e8f0;
     padding: 32px 40px;
 }
 
 .header-content h1 {
-    color: white;
+    color: #1e293b;
     font-size: 32px;
     font-weight: 700;
     margin: 8px 0 4px 0;
 }
 
 .header-content p {
-    color: rgba(255, 255, 255, 0.8);
+    color: #64748b;
     font-size: 16px;
     margin: 0;
 }
@@ -231,20 +320,21 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #64748b;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
     transition: all 0.3s ease;
     padding: 8px 16px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
 .back-button:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: #f1f5f9;
     transform: translateX(-4px);
+    color: #475569;
 }
 
 .payment-content {
@@ -288,7 +378,7 @@
 }
 
 .card-header svg {
-    color: #667eea;
+    color: #64748b;
 }
 
 .card-header h2 {
@@ -323,8 +413,8 @@
 }
 
 .priority-badge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: #f1f5f9;
+    color: #475569;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 13px;
@@ -354,7 +444,7 @@
 }
 
 .service-price, .part-price {
-    color: #667eea;
+    color: #475569;
     font-size: 15px;
     font-weight: 600;
 }
@@ -381,13 +471,13 @@
 
 .total-row {
     padding: 18px 0;
-    border-bottom: 2px solid #667eea;
+    border-bottom: 2px solid #e2e8f0;
 }
 
 .total-amount {
     font-size: 24px;
     font-weight: 700;
-    color: #667eea;
+    color: #1e293b;
 }
 
 .form-section {
@@ -417,9 +507,9 @@
 .form-section input:focus,
 .form-section select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #94a3b8;
     background: white;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.1);
 }
 
 .form-row {
@@ -460,8 +550,8 @@
 }
 
 .payment-method-option:has(input:checked) {
-    border-color: #667eea;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: #94a3b8;
+    background: #f1f5f9;
 }
 
 .method-icon {
@@ -476,12 +566,193 @@
     color: #475569;
 }
 
+.split-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    padding: 8px 16px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.split-toggle:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.split-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-slider {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    background: #cbd5e1;
+    border-radius: 14px;
+    transition: all 0.3s ease;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.split-toggle input[type="checkbox"]:checked + .toggle-slider {
+    background: #1e293b;
+}
+
+.split-toggle input[type="checkbox"]:checked + .toggle-slider::before {
+    transform: translateX(24px);
+}
+
+.toggle-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.payment-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+.payment-row select,
+.payment-row input {
+    padding: 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #f8fafc;
+    transition: all 0.3s ease;
+}
+
+.payment-row select:focus,
+.payment-row input:focus {
+    outline: none;
+    border-color: #94a3b8;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.1);
+}
+
+.remove-row-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #ef4444;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.remove-row-btn:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.add-row-btn {
+    width: 100%;
+    padding: 12px;
+    border: 2px dashed #cbd5e1;
+    background: #f8fafc;
+    color: #64748b;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.add-row-btn:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.split-summary {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    margin-top: 16px;
+    font-size: 14px;
+}
+
+.split-summary strong {
+    color: #1e293b;
+    font-size: 16px;
+}
+
+.individual-discount-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.item-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: #475569;
+}
+
+.discount-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.discount-inputs select {
+    padding: 8px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    min-width: 100px;
+}
+
+.discount-inputs input {
+    padding: 8px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    width: 100px;
+}
+
 .balance-card {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: #10b981;
     border-radius: 16px;
     padding: 20px;
     margin-top: 20px;
-    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
 }
 
 .balance-content {
@@ -523,7 +794,7 @@
 .process-button {
     width: 100%;
     padding: 18px 24px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #1e293b;
     color: white;
     border: none;
     border-radius: 16px;
@@ -536,12 +807,13 @@
     justify-content: center;
     gap: 12px;
     margin-top: 24px;
-    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .process-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    background: #334155;
 }
 
 .process-button svg {
@@ -585,21 +857,232 @@
 <script>
 const originalTotal = {{ $job->invoice ? $job->invoice->total : 0 }};
 const subtotal = {{ $job->invoice ? $job->invoice->subtotal : 0 }};
+const servicesTotal = {{ $job->services->sum(fn($s) => $s->unit_price * $s->quantity) }};
+const partsTotal = {{ $job->parts->sum(fn($p) => $p->unit_price * $p->quantity) }};
+const tax = {{ $job->invoice ? $job->invoice->tax : 0 }};
 let currentTotal = originalTotal;
+let rowCounter = 1;
+
+function toggleReferenceField() {
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+    const referenceField = document.getElementById('referenceField');
+    const referenceLabel = document.getElementById('referenceLabel');
+    
+    if (paymentMethod === 'cash') {
+        referenceField.style.display = 'none';
+    } else if (paymentMethod === 'card') {
+        referenceField.style.display = 'block';
+        referenceLabel.textContent = 'Card Reference Number';
+        document.getElementById('referenceNumber').placeholder = 'Enter card transaction reference';
+    } else if (paymentMethod === 'upi') {
+        referenceField.style.display = 'block';
+        referenceLabel.textContent = 'UPI Transaction ID';
+        document.getElementById('referenceNumber').placeholder = 'Enter UPI transaction ID';
+    } else if (paymentMethod === 'bank_transfer') {
+        referenceField.style.display = 'block';
+        referenceLabel.textContent = 'Bank Transfer Reference';
+        document.getElementById('referenceNumber').placeholder = 'Enter bank transfer reference';
+    }
+}
+
+function toggleDiscountSection() {
+    const discountApplyTo = document.getElementById('discountApplyTo').value;
+    const globalSection = document.getElementById('globalDiscountSection');
+    const individualServicesSection = document.getElementById('individualServicesSection');
+    const individualPartsSection = document.getElementById('individualPartsSection');
+    
+    // Hide all individual sections first
+    individualServicesSection.style.display = 'none';
+    individualPartsSection.style.display = 'none';
+    
+    if (discountApplyTo === 'individual_services') {
+        globalSection.style.display = 'none';
+        individualServicesSection.style.display = 'block';
+        calculateIndividualDiscounts();
+    } else if (discountApplyTo === 'individual_parts') {
+        globalSection.style.display = 'none';
+        individualPartsSection.style.display = 'block';
+        calculateIndividualDiscounts();
+    } else {
+        globalSection.style.display = 'block';
+        calculateTotal();
+    }
+}
+
+function calculateIndividualDiscounts() {
+    const discountApplyTo = document.getElementById('discountApplyTo').value;
+    let totalDiscount = 0;
+    
+    if (discountApplyTo === 'individual_services') {
+        const serviceInputs = document.querySelectorAll('.item-discount-value[data-item-type="service"]');
+        serviceInputs.forEach(input => {
+            const type = input.previousElementSibling.value;
+            const value = parseFloat(input.value) || 0;
+            const price = parseFloat(input.dataset.itemPrice);
+            
+            if (type === 'amount') {
+                totalDiscount += Math.min(value, price);
+            } else if (type === 'percentage') {
+                totalDiscount += (price * value) / 100;
+            }
+        });
+    } else if (discountApplyTo === 'individual_parts') {
+        const partInputs = document.querySelectorAll('.item-discount-value[data-item-type="part"]');
+        partInputs.forEach(input => {
+            const type = input.previousElementSibling.value;
+            const value = parseFloat(input.value) || 0;
+            const price = parseFloat(input.dataset.itemPrice);
+            
+            if (type === 'amount') {
+                totalDiscount += Math.min(value, price);
+            } else if (type === 'percentage') {
+                totalDiscount += (price * value) / 100;
+            }
+        });
+    }
+    
+    // Calculate new total with individual discounts
+    currentTotal = (subtotal - totalDiscount) + tax;
+    currentTotal = Math.max(0, currentTotal);
+    
+    document.getElementById('displayDiscount').textContent = 'Rs. ' + totalDiscount.toFixed(2);
+    document.getElementById('displayTotal').textContent = 'Rs. ' + currentTotal.toFixed(2);
+    
+    calculateBalance();
+}
+
+function toggleSplitPayment() {
+    const splitToggle = document.getElementById('splitPaymentToggle');
+    const singleSection = document.getElementById('singlePaymentSection');
+    const splitSection = document.getElementById('splitPaymentSection');
+    const referenceField = document.getElementById('referenceField');
+    const amountReceived = document.getElementById('amountReceived');
+    
+    if (splitToggle.checked) {
+        singleSection.style.display = 'none';
+        splitSection.style.display = 'block';
+        referenceField.style.display = 'none';
+        amountReceived.parentElement.style.display = 'none';
+        calculateSplitTotal();
+    } else {
+        singleSection.style.display = 'block';
+        splitSection.style.display = 'none';
+        referenceField.style.display = 'none';
+        amountReceived.parentElement.style.display = 'block';
+        toggleReferenceField();
+    }
+}
+
+function addPaymentRow() {
+    const paymentRows = document.getElementById('paymentRows');
+    const newRow = document.createElement('div');
+    newRow.className = 'payment-row';
+    newRow.dataset.row = rowCounter;
+    newRow.innerHTML = `
+        <select class="split-method" onchange="updateSplitReference(this)">
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+            <option value="upi">UPI</option>
+            <option value="bank_transfer">Bank Transfer</option>
+        </select>
+        <input type="number" step=".01" class="split-amount" placeholder="Amount" oninput="calculateSplitTotal()">
+        <input type="text" class="split-reference" placeholder="Reference (if needed)" style="display: none;">
+        <button type="button" class="remove-row-btn" onclick="removePaymentRow(this)">×</button>
+    `;
+    paymentRows.appendChild(newRow);
+    rowCounter++;
+    
+    // Show remove button for all rows except first
+    updateRemoveButtons();
+}
+
+function removePaymentRow(button) {
+    const row = button.closest('.payment-row');
+    row.remove();
+    updateRemoveButtons();
+    calculateSplitTotal();
+}
+
+function updateRemoveButtons() {
+    const rows = document.querySelectorAll('.payment-row');
+    rows.forEach((row, index) => {
+        const removeBtn = row.querySelector('.remove-row-btn');
+        if (rows.length > 1) {
+            removeBtn.style.display = 'block';
+        } else {
+            removeBtn.style.display = 'none';
+        }
+    });
+}
+
+function updateSplitReference(select) {
+    const row = select.closest('.payment-row');
+    const referenceInput = row.querySelector('.split-reference');
+    const method = select.value;
+    
+    if (method === 'cash') {
+        referenceInput.style.display = 'none';
+    } else {
+        referenceInput.style.display = 'block';
+        if (method === 'card') {
+            referenceInput.placeholder = 'Card reference';
+        } else if (method === 'upi') {
+            referenceInput.placeholder = 'UPI transaction ID';
+        } else if (method === 'bank_transfer') {
+            referenceInput.placeholder = 'Bank transfer reference';
+        }
+    }
+}
+
+function calculateSplitTotal() {
+    const amountInputs = document.querySelectorAll('.split-amount');
+    let total = 0;
+    
+    amountInputs.forEach(input => {
+        const value = parseFloat(input.value) || 0;
+        total += value;
+    });
+    
+    document.getElementById('splitTotal').textContent = 'Rs. ' + total.toFixed(2);
+    document.getElementById('splitRemaining').textContent = 'Rs. ' + Math.max(0, currentTotal - total).toFixed(2);
+    
+    // Update amount received field for form submission
+    const amountReceived = document.getElementById('amountReceived');
+    amountReceived.value = total;
+    calculateBalance();
+}
 
 function calculateTotal() {
     const discountType = document.getElementById('discountType').value;
     const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+    const discountApplyTo = document.getElementById('discountApplyTo').value;
     
     let discountAmount = 0;
+    let discountBase = 0;
     
-    if (discountType === 'amount') {
-        discountAmount = Math.min(discountValue, originalTotal);
-    } else if (discountType === 'percentage') {
-        discountAmount = (originalTotal * discountValue) / 100;
+    // Determine the base amount for discount calculation
+    if (discountApplyTo === 'services') {
+        discountBase = servicesTotal;
+    } else if (discountApplyTo === 'parts') {
+        discountBase = partsTotal;
+    } else {
+        discountBase = subtotal; // Total amount (services + parts)
     }
     
-    currentTotal = originalTotal - discountAmount;
+    // Calculate discount amount based on type
+    if (discountType === 'amount') {
+        discountAmount = Math.min(discountValue, discountBase);
+    } else if (discountType === 'percentage') {
+        discountAmount = (discountBase * discountValue) / 100;
+    }
+    
+    // Calculate new total
+    // Original formula: subtotal + tax = total
+    // New formula: (subtotal - discount) + tax = new total
+    currentTotal = (subtotal - discountAmount) + tax;
+    
+    // Ensure total doesn't go below zero
+    currentTotal = Math.max(0, currentTotal);
     
     document.getElementById('displayDiscount').textContent = 'Rs. ' + discountAmount.toFixed(2);
     document.getElementById('displayTotal').textContent = 'Rs. ' + currentTotal.toFixed(2);
@@ -626,11 +1109,11 @@ function calculateBalance() {
         balanceDisplay.style.display = 'block';
         if (balance >= 0) {
             balanceAmount.textContent = 'Rs. ' + balance.toFixed(2);
-            balanceDisplay.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            balanceDisplay.style.background = '#10b981';
             document.getElementById('displayBalance').style.color = '#10b981';
         } else {
             balanceAmount.textContent = 'Rs. ' + Math.abs(balance).toFixed(2);
-            balanceDisplay.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            balanceDisplay.style.background = '#ef4444';
             document.getElementById('displayBalance').style.color = '#ef4444';
         }
     } else {

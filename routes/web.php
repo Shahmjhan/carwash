@@ -56,9 +56,9 @@ Route::middleware('auth')->group(function(){
  Route::resource('inventory',InventoryController::class)->except(['show'])->parameters(['inventory'=>'product'])->middleware('permission:view_item_master');
  Route::post('/inventory/{product}/adjust',[InventoryController::class,'adjust'])->name('inventory.adjust')->middleware('permission:adjust_stock_item_master');
  Route::resource('categories',CategoryController::class)->middleware('permission:view_categories');
- Route::resource('invoices',InvoiceController::class)->only(['index','show'])->middleware('permission:view_billing');
- Route::post('/invoices/{invoice}/pay',[InvoiceController::class,'pay'])->name('invoices.pay')->middleware('permission:pay_billing');
- Route::get('/invoices/{invoice}/print/{format?}',[InvoiceController::class,'printInvoice'])->name('invoices.print')->middleware('permission:print_billing')->where('format','a4|thermal');
+ Route::resource('invoices',InvoiceController::class)->only(['index','show'])->middleware('permission:view_invoices');
+ Route::post('/invoices/{invoice}/pay',[InvoiceController::class,'pay'])->name('invoices.pay')->middleware('permission:pay_invoices');
+ Route::get('/invoices/{invoice}/print/{format?}',[InvoiceController::class,'printInvoice'])->name('invoices.print')->middleware('permission:print_invoices')->where('format','a4|thermal');
  Route::get('/cashier',[CashierController::class,'index'])->name('cashier.index')->middleware('permission:view_cashier');
  Route::get('/cashier/search',[CashierController::class,'search'])->name('cashier.search')->middleware('permission:search_cashier');
  Route::get('/cashier/payment/{job}',[CashierController::class,'payment'])->name('cashier.payment')->middleware('permission:payment_cashier');

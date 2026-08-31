@@ -23,7 +23,7 @@ class PermissionService
             'appointments' => ['view', 'create', 'edit', 'delete'],
             'item_master' => ['view', 'create', 'edit', 'delete', 'adjust_stock'],
             'categories' => ['view', 'create', 'edit', 'delete'],
-            'billing' => ['view', 'pay', 'print'],
+            'invoices' => ['view', 'pay', 'print'],
             'cashier' => ['view', 'search', 'payment', 'print_options'],
             'reports' => ['view'],
             'users' => ['view', 'create', 'edit', 'delete'],
@@ -61,7 +61,7 @@ class PermissionService
                 'view_appointments', 'create_appointments', 'edit_appointments', 'delete_appointments',
                 'view_item_master', 'create_item_master', 'edit_item_master', 'delete_item_master', 'adjust_stock_item_master',
                 'view_categories', 'create_categories', 'edit_categories', 'delete_categories',
-                'view_billing', 'pay_billing', 'print_billing',
+                'view_invoices', 'pay_invoices', 'print_invoices',
                 'view_cashier', 'search_cashier', 'payment_cashier', 'print_options_cashier',
                 'view_reports',
                 'view_users', 'create_users', 'edit_users', 'delete_users',
@@ -74,7 +74,7 @@ class PermissionService
                 'view_appointments', 'create_appointments', 'edit_appointments', 'delete_appointments',
                 'view_item_master', 'create_item_master', 'edit_item_master', 'delete_item_master', 'adjust_stock_item_master',
                 'view_categories', 'create_categories', 'edit_categories', 'delete_categories',
-                'view_billing', 'pay_billing', 'print_billing',
+                'view_invoices', 'pay_invoices', 'print_invoices',
                 'view_cashier', 'search_cashier', 'payment_cashier', 'print_options_cashier',
                 'view_reports'
             ],
@@ -82,11 +82,11 @@ class PermissionService
                 'view_reception', 'view_dashboard', 'view_job_cards', 'create_job_cards',
                 'view_customers', 'create_customers', 'view_vehicles', 'create_vehicles',
                 'view_appointments', 'create_appointments',
-                'view_billing', 'pay_billing', 'print_billing',
+                'view_invoices', 'pay_invoices', 'print_invoices',
                 'view_cashier', 'search_cashier', 'payment_cashier', 'print_options_cashier'
             ],
             'cashier' => [
-                'view_dashboard', 'view_billing', 'pay_billing', 'print_billing',
+                'view_dashboard', 'view_invoices', 'pay_invoices', 'print_invoices',
                 'view_cashier', 'search_cashier', 'payment_cashier', 'print_options_cashier',
                 'view_customers', 'create_customers', 'view_vehicles', 'create_vehicles',
                 'view_appointments', 'create_appointments', 'view_job_cards', 'create_job_cards'

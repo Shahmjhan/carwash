@@ -37,8 +37,8 @@
                 <a href="{{ route('inventory.index') }}">Item Master</a>
                 <a href="{{ route('categories.index') }}">Categories</a>
             @endif
-            @if(auth()->user()->hasPermission('view_billing'))
-                <a href="{{ route('invoices.index') }}">Billing</a>
+            @if(auth()->user()->hasPermission('view_invoices'))
+                <a href="{{ route('invoices.index') }}">Invoices</a>
                 <a href="{{ route('cashier.index') }}" class="cashier-link">
                     💰 Cashier
                     @php
