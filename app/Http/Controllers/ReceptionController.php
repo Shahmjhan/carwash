@@ -28,6 +28,7 @@ class ReceptionController extends Controller
                     'registration_number' => $vehicle->registration_number,
                     'make' => $vehicle->make,
                     'model' => $vehicle->model,
+                    'category' => $vehicle->category,
                     'customer_id' => $vehicle->customer_id,
                     'customer_name' => $vehicle->customer->full_name ?? 'Unknown'
                 ];

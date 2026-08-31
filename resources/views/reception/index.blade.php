@@ -43,8 +43,8 @@
     </div>
 
     <div class="reception-header">
-        <h1 style="color: #ffffff !important;">Vehicle Check-in</h1>
-        <p style="color: #ffffff !important;">Enter vehicle registration number to begin</p>
+        <h1>Vehicle Check-in</h1>
+        <p>Enter vehicle registration number to begin</p>
     </div>
 
     <div class="search-section">
@@ -130,41 +130,49 @@
         </div>
     </div>
 
-    <div id="jobForm" class="job-form hidden">
-        <div class="form-header">
-            <h2>Create Job Card</h2>
-            <button id="cancelBtn" class="btn-secondary">Cancel</button>
-        </div>
+    <!-- Job Card Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content job-modal-content">
+            <div class="modal-header">
+                <h3>Create Job Card</h3>
+                <button class="modal-close" onclick="closeJobModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="vehicle-image-section">
+                    <div id="vehicleImageContainer" class="vehicle-image-container">
+                        <div class="vehicle-placeholder">
+                            <span>Vehicle Image</span>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="vehicle-image-section">
-            <div id="vehicleImageContainer" class="vehicle-image-container">
-                <div class="vehicle-placeholder">
-                    <span>Vehicle Image</span>
+                <div class="info-row">
+                    <div class="customer-info">
+                        <h3>Customer Information</h3>
+                        <div id="customerDetails"></div>
+                    </div>
+
+                    <div class="vehicle-info">
+                        <h3>Vehicle Information</h3>
+                        <div id="vehicleDetails"></div>
+                    </div>
+                </div>
+
+                <div class="services-section">
+                    <h3>Select Services</h3>
+                    <div id="servicesList" class="services-grid"></div>
+                </div>
+
+                <div class="notes-section">
+                    <h3>Notes</h3>
+                    <textarea id="jobNotes" rows="3" placeholder="Additional notes..."></textarea>
                 </div>
             </div>
+            <div class="modal-footer">
+                <button id="createJobBtn" class="btn-primary">Create Job Card</button>
+                <button id="cancelBtn" class="btn-secondary">Cancel</button>
+            </div>
         </div>
-
-        <div class="customer-info">
-            <h3>Customer Information</h3>
-            <div id="customerDetails"></div>
-        </div>
-
-        <div class="vehicle-info">
-            <h3>Vehicle Information</h3>
-            <div id="vehicleDetails"></div>
-        </div>
-
-        <div class="services-section">
-            <h3>Select Services</h3>
-            <div id="servicesList" class="services-grid"></div>
-        </div>
-
-        <div class="notes-section">
-            <h3>Notes</h3>
-            <textarea id="jobNotes" rows="3" placeholder="Additional notes..."></textarea>
-        </div>
-
-        <button id="createJobBtn" class="btn-primary">Create Job Card</button>
     </div>
 </div>
 
@@ -198,14 +206,9 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
     }
 });
 
-document.getElementById('cancelBtn').addEventListener('click', () => {
-    document.getElementById('jobForm').classList.add('hidden');
-    document.getElementById('searchResults').innerHTML = '';
-    document.getElementById('searchInput').value = '';
-    selectedCustomer = null;
-    selectedVehicle = null;
-    selectedServices = [];
-});
+// Cancel button now just delegates to closeJobModal(), which owns
+// all of the "reset the form" cleanup in one place.
+document.getElementById('cancelBtn').addEventListener('click', closeJobModal);
 
 document.getElementById('createJobBtn').addEventListener('click', createJob);
 
@@ -275,6 +278,18 @@ function closeCustomerModal() {
     document.getElementById('customerModal').classList.remove('active');
 }
 
+// FIX: closing the job card (via the X button OR the Cancel button)
+// now fully resets the search box and all selected state, so a
+// leftover registration number can't linger for the next check-in.
+function closeJobModal() {
+    document.getElementById('jobModal').classList.remove('active');
+    document.getElementById('searchResults').innerHTML = '';
+    document.getElementById('searchInput').value = '';
+    selectedCustomer = null;
+    selectedVehicle = null;
+    selectedServices = [];
+}
+
 async function loadCustomersForModal() {
     try {
         const response = await fetch('/customers/list');
@@ -333,12 +348,16 @@ async function createVehicleFromModal() {
             showToast('Vehicle created successfully!', 'success');
             closeVehicleModal();
             // Ensure vehicle_id is set correctly
+            // FIX: include category (fall back to what was picked in the
+            // modal in case the server response doesn't echo it back),
+            // otherwise it shows as "undefined" in the job form.
             selectedVehicle = {
                 vehicle_id: data.id,
                 id: data.id,
                 registration_number: data.registration_number,
                 make: data.make,
                 model: data.model,
+                category: data.category || category,
                 customer_id: data.customer_id
             };
             selectedCustomer = { id: customerId, name: '' };
@@ -398,17 +417,25 @@ async function createCustomerFromModal() {
 }
 
 function selectVehicleDirect(vehicle) {
-    selectedCustomer = { id: vehicle.customer_id, name: vehicle.customer_name };
+    selectedCustomer = {
+        id: vehicle.customer_id,
+        name: vehicle.customer_name
+    };
+
     selectedVehicle = {
-        vehicle_id: vehicle.vehicle_id,
-        id: vehicle.vehicle_id,
-        registration_number: vehicle.registration_number,
-        make: vehicle.make,
-        model: vehicle.model,
+        vehicle_id: vehicle.vehicle_id ?? vehicle.id,
+        id: vehicle.vehicle_id ?? vehicle.id,
+        registration_number: vehicle.registration_number ?? '',
+        make: vehicle.make ?? '',
+        model: vehicle.model ?? '',
+        category: vehicle.category ?? '',
         customer_id: vehicle.customer_id
     };
+
     document.getElementById('searchResults').innerHTML = '';
-    document.getElementById('searchInput').value = vehicle.registration_number;
+    document.getElementById('searchInput').value =
+        vehicle.registration_number ?? '';
+
     showJobForm();
 }
 
@@ -448,22 +475,46 @@ function selectCustomerDirect(customer) {
 }
 
 function selectVehicle(vehicle) {
-    selectedVehicle = vehicle;
+    selectedVehicle = {
+        vehicle_id: vehicle.vehicle_id ?? vehicle.id,
+        id: vehicle.vehicle_id ?? vehicle.id,
+        registration_number: vehicle.registration_number ?? '',
+        make: vehicle.make ?? '',
+        model: vehicle.model ?? '',
+        category: vehicle.category ?? '',
+        customer_id: vehicle.customer_id
+    };
+
     showJobForm();
 }
 
 function showJobForm() {
     document.getElementById('searchResults').innerHTML = '';
-    document.getElementById('jobForm').classList.remove('hidden');
-    
+    document.getElementById('jobModal').classList.add('active');
+
+    // ---------------------------------------------------------
+    // Customer information
+    // ---------------------------------------------------------
     document.getElementById('customerDetails').innerHTML = `
-        <p><strong>Name:</strong> ${selectedCustomer.name}</p>
+        <p>
+            <strong>Name:</strong>
+            ${selectedCustomer?.name ?? ''}
+        </p>
     `;
-    
-    // Display vehicle image if available
-    const vehicleImageContainer = document.getElementById('vehicleImageContainer');
-    if (selectedVehicle.image) {
-        vehicleImageContainer.innerHTML = `<img src="${selectedVehicle.image}" alt="Vehicle Image">`;
+
+    // ---------------------------------------------------------
+    // Vehicle image
+    // ---------------------------------------------------------
+    const vehicleImageContainer =
+        document.getElementById('vehicleImageContainer');
+
+    if (selectedVehicle?.image) {
+        vehicleImageContainer.innerHTML = `
+            <img
+                src="${selectedVehicle.image}"
+                alt="Vehicle Image"
+            >
+        `;
     } else {
         vehicleImageContainer.innerHTML = `
             <div class="vehicle-placeholder">
@@ -471,13 +522,30 @@ function showJobForm() {
             </div>
         `;
     }
-    
+
+    // ---------------------------------------------------------
+    // Vehicle information
+    // ---------------------------------------------------------
+    const category = selectedVehicle?.category;
+
     document.getElementById('vehicleDetails').innerHTML = `
-        <p><strong>Registration:</strong> ${selectedVehicle.registration_number}</p>
-        <p><strong>Make/Model:</strong> ${selectedVehicle.make} ${selectedVehicle.model}</p>
-        <p><strong>Category:</strong> ${selectedVehicle.category}</p>
+        <p>
+            <strong>Registration:</strong>
+            ${selectedVehicle?.registration_number ?? ''}
+        </p>
+
+        <p>
+            <strong>Make/Model:</strong>
+            ${selectedVehicle?.make ?? ''}
+            ${selectedVehicle?.model ?? ''}
+        </p>
+
+        <p>
+            <strong>Category:</strong>
+            ${category || 'Not specified'}
+        </p>
     `;
-    
+
     loadServices();
 }
 
@@ -567,6 +635,22 @@ document.addEventListener('click', (e) => {
 </script>
 
 <style>
+/* =========================================================
+   TOKENS
+   A workshop diagnostic-screen feel: deep steel-blue base,
+   one cyan accent, glass surfaces used only where they help
+   (search, cards, modal) — not stacked everywhere.
+   ========================================================= */
+:root {
+    --ink: #060a14;
+    --panel: rgba(255, 255, 255, 0.06);
+    --panel-border: rgba(147, 197, 253, 0.22);
+    --accent: #38bdf8;
+    --accent-deep: #2563eb;
+    --text: #f1f5f9;
+    --text-dim: rgba(226, 232, 240, 0.75);
+}
+
 .reception-fullscreen {
     margin: 0;
     padding: 0;
@@ -587,16 +671,17 @@ document.addEventListener('click', (e) => {
     position: relative;
     width: 100%;
     overflow-x: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .reception-container::before {
     content: '';
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(26, 26, 46, 0.7) 100%);
+    inset: 0;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.10), transparent 35%),
+        radial-gradient(circle at 85% 75%, rgba(56, 189, 248, 0.08), transparent 35%),
+        linear-gradient(135deg, rgba(3, 7, 18, 0.78) 0%, rgba(8, 15, 30, 0.82) 50%, rgba(4, 10, 22, 0.88) 100%);
     z-index: 0;
     pointer-events: none;
 }
@@ -606,57 +691,35 @@ document.addEventListener('click', (e) => {
     z-index: 1;
 }
 
+/* ---------------------------------------------------------
+   Header — static, legible. No infinite blink: it's the
+   first thing a receptionist reads dozens of times a shift.
+   --------------------------------------------------------- */
 .reception-header {
     text-align: center;
-    margin-bottom: 50px;
-    padding: 40px 20px;
+    margin-bottom: 44px;
+    padding: 36px 20px 0;
 }
 
 .reception-header h1 {
-    color: #ffffff !important;
-    margin-bottom: 15px;
-    font-size: 56px;
-    font-weight: 800;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    letter-spacing: -1px;
+    color: var(--text);
+    margin-bottom: 10px;
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
     line-height: 1.2;
-    transition: all 0.3s ease;
-    cursor: default;
-    animation: blink 2s ease-in-out infinite;
-}
-
-@keyframes blink {
-    0%, 100% {
-        opacity: 1;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        opacity: 0.7;
-        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(74, 144, 226, 0.3);
-    }
-}
-
-.reception-header h1:hover {
-    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(74, 144, 226, 0.3);
-    transform: scale(1.02);
 }
 
 .reception-header p {
-    color: #ffffff !important;
-    font-size: 22px;
+    color: var(--text-dim);
+    font-size: 18px;
     margin: 0;
-    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
-    font-weight: 500;
-    transition: all 0.3s ease;
-    cursor: default;
-    animation: blink 2s ease-in-out infinite;
-    animation-delay: 0.5s;
+    font-weight: 400;
 }
 
-.reception-header p:hover {
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 20px rgba(74, 144, 226, 0.2);
-}
-
+/* ---------------------------------------------------------
+   Nav
+   --------------------------------------------------------- */
 .reception-nav {
     position: fixed;
     top: 20px;
@@ -665,32 +728,33 @@ document.addEventListener('click', (e) => {
 }
 
 .nav-toggle {
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--panel-border);
     color: white;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 24px;
+    font-size: 22px;
     backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
+    transition: background 0.2s ease;
 }
 
 .nav-toggle:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.16);
 }
 
 .nav-menu {
     position: absolute;
-    top: 50px;
+    top: 52px;
     right: 0;
-    background: rgba(26, 26, 46, 0.95);
+    background: rgba(10, 16, 32, 0.96);
+    border: 1px solid var(--panel-border);
     border-radius: 12px;
-    padding: 15px;
+    padding: 10px;
     min-width: 200px;
     display: none;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 
 .nav-menu.active {
@@ -699,148 +763,36 @@ document.addEventListener('click', (e) => {
 
 .nav-menu a {
     display: block;
-    color: white;
+    color: var(--text);
     text-decoration: none;
-    padding: 10px 15px;
-    border-radius: 6px;
-    margin-bottom: 5px;
-    transition: all 0.3s ease;
+    padding: 10px 14px;
+    border-radius: 7px;
+    margin-bottom: 2px;
+    font-size: 14px;
+    transition: background 0.15s ease;
 }
 
 .nav-menu a:hover {
-    background: rgba(74, 144, 226, 0.3);
+    background: rgba(56, 189, 248, 0.14);
 }
 
 .nav-menu a.logout-link {
-    color: #e74c3c;
+    color: #f87171;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 15px;
-    margin-top: 10px;
+    padding-top: 12px;
+    margin-top: 8px;
 }
 
 .nav-menu a.logout-link:hover {
-    background: rgba(231, 76, 60, 0.2);
+    background: rgba(239, 68, 68, 0.14);
 }
 
+/* ---------------------------------------------------------
+   Search
+   --------------------------------------------------------- */
 .search-section {
     margin-bottom: 30px;
     position: relative;
-}
-
-.search-box input {
-    width: 100%;
-    padding: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    font-size: 18px;
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    transition: all 0.3s ease;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.search-box input::placeholder {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-.search-box input:focus {
-    outline: none;
-    border-color: rgba(74, 144, 226, 0.8);
-    background: rgba(255, 255, 255, 0.25);
-    box-shadow: 0 8px 32px rgba(74, 144, 226, 0.4);
-}
-
-.search-results {
-    min-height: 100px;
-}
-
-.result-card {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 25px;
-    border-radius: 12px;
-    border-left: 4px solid #4a90e2;
-    margin-bottom: 15px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-}
-
-.result-card h4 {
-    margin: 0 0 15px 0;
-    color: #1a1a2e;
-    font-size: 20px;
-}
-
-.result-card p {
-    color: #1a1a2e;
-    margin: 8px 0;
-}
-
-.result-card strong {
-    color: #1a1a2e;
-}
-
-#toastContainer {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 10000;
-    pointer-events: none;
-}
-
-.toast {
-    pointer-events: auto;
-    background: white;
-    padding: 16px 24px;
-    margin-bottom: 12px;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    border-left: 5px solid;
-    min-width: 320px;
-    transition: all 0.3s ease;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.toast-success {
-    border-left-color: #28a745;
-    background: #d4edda;
-    color: #155724;
-}
-
-.toast-error {
-    border-left-color: #dc3545;
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.reception-header {
-    text-align: center;
-    margin-bottom: 30px;
-}
-
-.reception-header h1 {
-    color: #1a1a2e;
-    margin-bottom: 10px;
-}
-
-.reception-header p {
-    color: #666;
-}
-
-.search-section {
-    margin-bottom: 30px;
 }
 
 .search-box {
@@ -850,255 +802,81 @@ document.addEventListener('click', (e) => {
 }
 
 .search-box input {
-    flex: 1;
-    padding: 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 16px;
+    width: 100%;
+    padding: 20px 22px;
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    font-size: 18px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(125, 211, 252, 0.07));
+    color: var(--text);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: rgba(125, 211, 252, 0.75);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12), 0 12px 45px rgba(14, 165, 233, 0.22);
 }
 
 .search-results {
     min-height: 100px;
 }
 
-.search-section {
-    margin-bottom: 30px;
+/* ---------------------------------------------------------
+   Result cards — one entrance animation on render only.
+   --------------------------------------------------------- */
+.result-card {
+    position: relative;
+    padding: 24px;
+    border-radius: 18px;
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--accent);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(96, 165, 250, 0.06));
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    color: var(--text);
+    margin-bottom: 15px;
+    animation: resultCardIn 0.3s ease both;
 }
 
-.result-card {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    border-left: 4px solid #4a90e2;
+@keyframes resultCardIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .result-card h4 {
-    margin-bottom: 15px;
-    color: #1a1a2e;
+    margin: 0 0 15px;
+    color: #e0f2fe;
+    font-size: 17px;
+    font-weight: 600;
 }
 
 .result-card p {
     margin: 8px 0;
-    color: #333;
+    color: var(--text-dim);
 }
 
-.vehicles-list {
-    margin: 15px 0;
-}
-
-.vehicle-btn {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin: 5px 0;
-    background: white;
-    border: 1px solid #4a90e2;
-    color: #4a90e2;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.vehicle-btn:hover {
-    background: #4a90e2;
-    color: white;
-}
-
-.job-form {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.vehicle-image-section {
-    margin-bottom: 25px;
-    text-align: center;
-}
-
-.vehicle-image-container {
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-    border-radius: 12px;
-    overflow: hidden;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-    border: 2px solid rgba(74, 144, 226, 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    transition: all 0.4s ease;
-    animation: pulse-glow 3s ease-in-out infinite;
-}
-
-.vehicle-image-container:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 24px rgba(74, 144, 226, 0.3);
-    border-color: rgba(74, 144, 226, 0.6);
-}
-
-.vehicle-image-container img {
-    width: 100%;
-    height: auto;
-    display: block;
-    object-fit: cover;
-}
-
-.vehicle-placeholder {
-    padding: 40px 20px;
-    color: #4a90e2;
-    font-size: 16px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 200px;
-}
-
-@keyframes pulse-glow {
-    0%, 100% {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 0 0 0 rgba(74, 144, 226, 0.4);
-    }
-    50% {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 0 20px 5px rgba(74, 144, 226, 0.2);
-    }
-}
-
-.form-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.form-header h2 {
-    text-align: center;
-    color: #4a90e2;
-    font-weight: 800;
-    font-size: 28px;
-    flex: 1;
-}
-
-.customer-info, .vehicle-info, .services-section, .notes-section {
-    margin-bottom: 25px;
-}
-
-.customer-info h3, .vehicle-info h3, .services-section h3, .notes-section h3 {
-    color: #1a1a2e;
-    margin-bottom: 15px;
-    border-bottom: 2px solid #e0e0e0;
-    padding-bottom: 10px;
-}
-
-.services-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
-}
-
-.service-item {
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.service-item:hover {
-    background: #e9ecef;
-}
-
-.service-item input {
-    margin-right: 15px;
-    width: 20px;
-    height: 20px;
-}
-
-.service-info {
-    flex: 1;
-    display: flex;
-    justify-content: space-between;
-}
-
-.service-name {
-    font-weight: 500;
-}
-
-.service-price {
-    color: #4a90e2;
-    font-weight: 600;
-}
-
-.notes-section textarea {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    resize: vertical;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.4);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(74, 144, 226, 0.6);
-}
-
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-}
-
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
-}
-
-.hidden {
-    display: none;
+.result-card strong {
+    color: #bae6fd;
 }
 
 .no-results {
     padding: 20px;
     text-align: center;
-    color: #666;
+    color: var(--text-dim);
 }
 
 .no-results a {
-    color: #4a90e2;
+    color: var(--accent);
     text-decoration: underline;
-}
-
-.no-results-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.no-results-actions a {
-    text-decoration: none;
-    padding: 10px 20px;
-    border-radius: 6px;
-    display: inline-block;
 }
 
 .vehicles-list {
@@ -1115,55 +893,418 @@ document.addEventListener('click', (e) => {
     align-items: center;
     width: 100%;
     padding: 15px;
-    background: white;
-    border: 2px solid #4a90e2;
-    color: #4a90e2;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 10px;
     cursor: pointer;
     font-size: 14px;
-    transition: all 0.2s;
+    transition: background 0.2s ease, color 0.2s ease;
 }
 
 .vehicle-btn:hover {
-    background: #4a90e2;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
+    background: var(--accent);
+    color: #06263a;
 }
 
 .vehicle-btn strong {
     font-size: 16px;
 }
 
-.vehicle-form,
-.customer-form {
+/* ---------------------------------------------------------
+   Toasts
+   --------------------------------------------------------- */
+#toastContainer {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 10000;
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    background: white;
+    padding: 16px 24px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    border-left: 5px solid;
+    min-width: 320px;
+    transition: opacity 0.3s ease;
+    animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.toast-success {
+    border-left-color: #28a745;
+    background: #d4edda;
+    color: #155724;
+}
+
+.toast-error {
+    border-left-color: #dc3545;
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* ---------------------------------------------------------
+   Job card content — lives inside the job modal now, so it
+   reuses the same section styling as before but without its
+   own outer panel (the modal-content supplies that).
+
+   "Age-friendly" pass: bigger type, more generous line
+   height and spacing, softer/rounder cards, higher-contrast
+   labels — comfortable to read for anyone, not just people
+   with sharp near vision.
+   --------------------------------------------------------- */
+.vehicle-image-section {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.vehicle-image-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
+    border: 1px solid var(--panel-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.vehicle-image-container:hover {
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.25);
+    border-color: rgba(125, 211, 252, 0.55);
+}
+
+.vehicle-image-container img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+}
+
+.vehicle-placeholder {
+    padding: 40px 20px;
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+/* Customer + Vehicle information side by side */
+.info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.customer-info, .vehicle-info, .services-section, .notes-section {
+    margin-bottom: 25px;
+}
+
+.info-row .customer-info, .info-row .vehicle-info {
+    margin-bottom: 0;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(186, 230, 253, 0.16);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.customer-info h3, .vehicle-info h3, .services-section h3, .notes-section h3 {
+    color: #e0f2fe;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(186, 230, 253, 0.16);
+    padding-bottom: 10px;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.customer-info p, .vehicle-info p {
+    margin: 10px 0;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.customer-info strong, .vehicle-info strong {
+    color: #bae6fd;
+    font-weight: 700;
+}
+
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.service-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(186, 230, 253, 0.14);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.service-item:hover {
+    background: rgba(56, 189, 248, 0.14);
+    border-color: rgba(125, 211, 252, 0.4);
+}
+
+.service-item input {
+    margin-right: 15px;
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+}
+
+.service-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.service-name {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 15px;
+}
+
+.service-price {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.notes-section textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 16px;
+    border: 1px solid rgba(186, 230, 253, 0.25);
+    border-radius: 14px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    resize: vertical;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-family: inherit;
+}
+
+.notes-section textarea::placeholder {
+    color: rgba(186, 230, 253, 0.55);
+}
+
+.notes-section textarea:focus {
+    outline: none;
+    border-color: rgba(125, 211, 252, 0.75);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+#createJobBtn {
+    flex: 1;
+}
+
+/* ---------------------------------------------------------
+   Buttons — one calm hover treatment each, no idle motion.
+   --------------------------------------------------------- */
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.5);
+}
+
+.result-card .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.10);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.no-results-actions {
+    display: flex;
+    gap: 10px;
     margin-top: 15px;
 }
 
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-    color: #1a1a2e;
-}
-
-.form-group input,
-.form-group select {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #e0e0e0;
+.no-results-actions a {
+    text-decoration: none;
+    padding: 10px 20px;
     border-radius: 6px;
-    font-size: 14px;
+    display: inline-block;
 }
 
-.form-group input:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: #4a90e2;
+.hidden {
+    display: none;
+}
+
+/* ---------------------------------------------------------
+   Modals
+   --------------------------------------------------------- */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, rgba(14, 165, 233, 0.08), transparent 45%), rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    position: relative;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(30, 64, 175, 0.10));
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    backdrop-filter: blur(30px) saturate(145%);
+    -webkit-backdrop-filter: blur(30px) saturate(145%);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 50px rgba(14, 165, 233, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    animation: modalGlassIn 0.3s cubic-bezier(.2,.8,.2,1);
+}
+
+/* Job card modal needs more room now that customer + vehicle
+   info sit side by side, and reads better a bit wider overall.
+   It keeps the same blue family as the rest of the app but a
+   touch lighter/brighter than the base modal — this is the
+   "taking care of the customer" moment, so it gets a slightly
+   airier, higher-key version of the shared blue palette. */
+.job-modal-content {
+    max-width: 960px;
+    --job-accent: #7dd3fc;        /* lighter sky blue */
+    --job-accent-deep: #38bdf8;   /* brighter accent blue */
+    --job-panel-border: rgba(186, 230, 253, 0.30);
+    --job-text-warm: #e6f6ff;
+}
+
+.job-modal-content .modal-header {
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.20), rgba(56, 189, 248, 0.12));
+    border-bottom: 1px solid var(--job-panel-border);
+}
+
+.job-modal-content .modal-header h3 {
+    color: var(--job-text-warm);
+}
+
+.job-modal-content .modal-footer {
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(56, 189, 248, 0.09));
+    border-top: 1px solid var(--job-panel-border);
+}
+
+@keyframes modalGlassIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 22px 24px;
+    border-bottom: 1px solid rgba(186, 230, 253, 0.16);
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #e0f2fe;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(186, 230, 253, 0.18);
+    border-radius: 9px;
+    font-size: 22px;
+    cursor: pointer;
+    color: rgba(224, 242, 254, 0.75);
+    line-height: 1;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.modal-close:hover {
+    color: #ffffff;
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(248, 113, 113, 0.40);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    padding: 20px 24px;
+    border-top: 1px solid rgba(186, 230, 253, 0.14);
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.07), rgba(59, 130, 246, 0.04));
 }
 
 .form-actions {
@@ -1182,82 +1323,55 @@ document.addEventListener('click', (e) => {
     font-weight: 500;
 }
 
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #bae6fd;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}
+
+.form-group input,
+.form-group select {
     width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
-    z-index: 10000;
-    align-items: center;
-    justify-content: center;
-}
-
-.modal.active {
-    display: flex;
-}
-
-.modal-content {
-    background: white;
+    box-sizing: border-box;
+    padding: 13px 14px;
+    border: 1px solid rgba(186, 230, 253, 0.25);
     border-radius: 12px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    animation: modalSlideIn 0.3s ease;
+    font-size: 14px;
+    color: var(--text);
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-@keyframes modalSlideIn {
-    from {
-        transform: translateY(-50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+.form-group input::placeholder {
+    color: rgba(186, 230, 253, 0.55);
 }
 
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #e0e0e0;
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: rgba(125, 211, 252, 0.75);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
 }
 
-.modal-header h3 {
-    margin: 0;
-    color: #1a1a2e;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #666;
-    line-height: 1;
-}
-
-.modal-close:hover {
-    color: #1a1a2e;
-}
-
-.modal-body {
-    padding: 20px;
-}
-
-.modal-footer {
-    display: flex;
-    gap: 10px;
-    padding: 20px;
-    border-top: 1px solid #e0e0e0;
+/* Native <select> dropdown panels render outside our
+   glassmorphism (the browser draws them), so the option list
+   was showing default white-on-black-ish system colors.
+   Force a dark background + light text on the options
+   themselves so the open dropdown matches the theme. */
+.form-group select option,
+.customer-select-wrapper select option {
+    background-color: #0b1224;
+    color: var(--text);
 }
 
 .customer-select-wrapper {
@@ -1271,437 +1385,206 @@ document.addEventListener('click', (e) => {
 }
 
 .btn-add-customer {
-    background: #4a90e2;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.75), rgba(37, 99, 235, 0.75));
+    color: #ffffff;
+    border: 1px solid rgba(186, 230, 253, 0.35);
+    padding: 11px 16px;
+    border-radius: 11px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
     white-space: nowrap;
+    backdrop-filter: blur(10px);
+    transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .btn-add-customer:hover {
-    background: #357abd;
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.9), rgba(37, 99, 235, 0.9));
 }
 
-/* Responsive Design */
+/* ---------------------------------------------------------
+   Job Card Modal — lighter blue palette applied to its inner
+   sections (image box, customer/vehicle panels, service
+   cards, notes, and the primary action button). Scoped
+   entirely under .job-modal-content so nothing else in
+   the app is affected.
+   --------------------------------------------------------- */
+.job-modal-content .info-row .customer-info,
+.job-modal-content .info-row .vehicle-info {
+    background: linear-gradient(135deg, rgba(186, 230, 253, 0.18), rgba(125, 211, 252, 0.08));
+    border: 1px solid var(--job-panel-border);
+}
+
+.job-modal-content .customer-info h3,
+.job-modal-content .vehicle-info h3,
+.job-modal-content .services-section h3,
+.job-modal-content .notes-section h3 {
+    color: var(--job-text-warm);
+    border-bottom: 1px solid var(--job-panel-border);
+}
+
+.job-modal-content .customer-info strong,
+.job-modal-content .vehicle-info strong {
+    color: var(--job-accent);
+}
+
+.job-modal-content .vehicle-image-container {
+    background: linear-gradient(135deg, rgba(186, 230, 253, 0.20), rgba(125, 211, 252, 0.10));
+    border: 1px solid var(--job-panel-border);
+}
+
+.job-modal-content .vehicle-image-container:hover {
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.28);
+    border-color: rgba(186, 230, 253, 0.6);
+}
+
+.job-modal-content .vehicle-placeholder {
+    color: var(--job-accent);
+}
+
+.job-modal-content .service-item {
+    background: linear-gradient(135deg, rgba(186, 230, 253, 0.18), rgba(125, 211, 252, 0.08));
+    border: 1px solid rgba(186, 230, 253, 0.20);
+}
+
+.job-modal-content .service-item:hover {
+    background: rgba(125, 211, 252, 0.20);
+    border-color: rgba(186, 230, 253, 0.5);
+}
+
+.job-modal-content .service-item input {
+    accent-color: var(--job-accent);
+}
+
+.job-modal-content .service-price {
+    color: var(--job-accent-deep);
+}
+
+.job-modal-content .notes-section textarea {
+    border: 1px solid rgba(186, 230, 253, 0.30);
+    background: linear-gradient(135deg, rgba(186, 230, 253, 0.16), rgba(125, 211, 252, 0.08));
+}
+
+.job-modal-content .notes-section textarea:focus {
+    border-color: rgba(125, 211, 252, 0.8);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+}
+
+.job-modal-content #createJobBtn {
+    background: linear-gradient(135deg, var(--job-accent) 0%, var(--job-accent-deep) 100%);
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
+}
+
+.job-modal-content #createJobBtn:hover {
+    box-shadow: 0 8px 22px rgba(56, 189, 248, 0.5);
+}
+
+/* ---------------------------------------------------------
+   Responsive
+   --------------------------------------------------------- */
 @media (max-width: 768px) {
-    .reception-header h1 {
-        font-size: 36px;
-    }
-    
-    .reception-header p {
-        font-size: 16px;
-    }
-    
-    .search-box input {
-        padding: 15px;
-        font-size: 16px;
-    }
-    
-    .result-card {
-        padding: 20px;
-    }
-    
-    .result-card h4 {
-        font-size: 18px;
-    }
-    
-    .result-card p {
-        font-size: 15px;
-    }
-    
-    .btn-primary,
-    .btn-secondary {
-        padding: 10px 20px;
-        font-size: 14px;
-    }
-    
-    .nav-toggle {
-        padding: 10px 14px;
-        font-size: 20px;
-    }
-    
-    .nav-menu {
-        min-width: 180px;
-        padding: 12px;
-    }
-    
-    .nav-menu a {
-        padding: 8px 12px;
-        font-size: 14px;
-    }
-    
-    /* Job Form */
-    .job-form {
-        padding: 20px;
-        overflow-x: hidden;
-    }
-    
-    .form-header h2 {
-        font-size: 24px;
-    }
-    
-    .form-header h3 {
-        font-size: 18px;
-    }
-    
-    .customer-info p,
-    .vehicle-info p {
-        font-size: 14px;
-    }
-    
-    .service-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
-    
-    .service-card {
-        padding: 15px;
-        overflow: hidden;
-    }
-    
-    .service-card h4 {
-        font-size: 14px;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-    
-    .service-card .price {
-        font-size: 16px;
-    }
-    
-    /* Modals */
-    .modal-content {
-        width: 95%;
-        max-width: 450px;
-        overflow-x: hidden;
-    }
-    
-    .modal-header h3 {
-        font-size: 20px;
-    }
-    
-    .modal-body {
-        padding: 15px;
-        overflow-x: hidden;
-    }
-    
-    .form-group label {
-        font-size: 14px;
-        word-wrap: break-word;
-    }
-    
-    .form-group input,
-    .form-group select {
-        padding: 10px;
-        font-size: 14px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .modal-footer {
-        padding: 15px;
-    }
-    
-    .modal-footer button {
-        padding: 10px 16px;
-        font-size: 14px;
-        flex: 1;
-    }
-    
-    .customer-select-wrapper {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
-    
-    .btn-add-customer {
-        margin-top: 10px;
-        width: 100%;
-    }
+    .reception-header h1 { font-size: 32px; }
+    .reception-header p { font-size: 15px; }
+    .search-box input { padding: 15px; font-size: 16px; }
+    .result-card { padding: 20px; }
+    .result-card h4 { font-size: 16px; }
+    .result-card p { font-size: 14px; }
+    .btn-primary, .btn-secondary { padding: 10px 20px; font-size: 14px; }
+    .nav-toggle { padding: 10px 14px; font-size: 20px; }
+    .nav-menu { min-width: 180px; padding: 10px; }
+    .nav-menu a { padding: 8px 12px; font-size: 14px; }
+
+    .form-header h2 { font-size: 22px; }
+    .customer-info p, .vehicle-info p { font-size: 14px; }
+
+    /* Stack customer/vehicle info back to one column on
+       narrower screens so nothing gets cramped. */
+    .info-row { grid-template-columns: 1fr; gap: 15px; }
+
+    .modal-content { width: 95%; max-width: 450px; overflow-x: hidden; }
+    .job-modal-content { max-width: 680px; }
+    .modal-header h3 { font-size: 18px; }
+    .modal-body { padding: 15px; overflow-x: hidden; }
+    .form-group label { font-size: 14px; }
+    .form-group input, .form-group select { padding: 10px; font-size: 14px; }
+    .modal-footer { padding: 15px; }
+    .modal-footer button { padding: 10px 16px; font-size: 14px; flex: 1; }
+    .customer-select-wrapper { flex-direction: column; align-items: stretch; gap: 10px; }
+    .btn-add-customer { margin-top: 10px; width: 100%; }
 }
 
 @media (max-width: 480px) {
-    .reception-header h1 {
-        font-size: 28px;
+    .reception-header h1 { font-size: 26px; }
+    .reception-header p { font-size: 13px; }
+    .search-box input { padding: 12px; font-size: 14px; }
+    .result-card { padding: 16px; }
+    .result-card h4 { font-size: 15px; }
+    .result-card p { font-size: 13px; }
+    .btn-primary, .btn-secondary { padding: 9px 16px; font-size: 13px; }
+    .nav-toggle { padding: 8px 12px; font-size: 18px; }
+    .nav-menu { min-width: 160px; padding: 8px; }
+    .nav-menu a { padding: 7px 10px; font-size: 13px; }
+
+    .vehicle-image-container { max-width: 220px; margin: 0 auto; border-radius: 10px; }
+    .vehicle-placeholder { padding: 24px 10px; font-size: 12px; min-height: 110px; }
+
+    .info-row { grid-template-columns: 1fr; gap: 10px; }
+
+    .customer-info, .vehicle-info, .services-section, .notes-section {
+        margin-bottom: 14px;
     }
-    
-    .reception-header p {
-        font-size: 14px;
+
+    .info-row .customer-info, .info-row .vehicle-info {
+        background: linear-gradient(135deg, rgba(125, 211, 252, 0.09), rgba(59, 130, 246, 0.05));
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(186, 230, 253, 0.16);
     }
-    
-    .search-box input {
-        padding: 12px;
-        font-size: 14px;
+
+    .services-section, .notes-section {
+        background: linear-gradient(135deg, rgba(125, 211, 252, 0.09), rgba(59, 130, 246, 0.05));
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(186, 230, 253, 0.16);
     }
-    
-    .result-card {
-        padding: 15px;
-    }
-    
-    .result-card h4 {
-        font-size: 16px;
-    }
-    
-    .result-card p {
+
+    .customer-info h3, .vehicle-info h3, .services-section h3, .notes-section h3 {
         font-size: 13px;
-    }
-    
-    .btn-primary,
-    .btn-secondary {
-        padding: 8px 16px;
-        font-size: 13px;
-    }
-    
-    .nav-toggle {
-        padding: 6px 10px;
-        font-size: 16px;
-    }
-    
-    .nav-menu {
-        min-width: 140px;
-        padding: 8px;
-    }
-    
-    .nav-menu a {
-        padding: 5px 8px;
-        font-size: 12px;
-    }
-    
-    .vehicle-image-section {
-        margin-bottom: 8px;
-        text-align: center;
-    }
-    
-    .vehicle-image-container {
-        width: 100%;
-        max-width: 200px;
-        margin: 0 auto;
-        border-radius: 8px;
-        overflow: hidden;
-        background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-        border: 1px solid rgba(74, 144, 226, 0.3);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        transition: all 0.4s ease;
-        animation: pulse-glow 3s ease-in-out infinite;
-    }
-    
-    .vehicle-image-container:hover {
-        transform: scale(1.03);
-        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.25);
-        border-color: rgba(74, 144, 226, 0.5);
-    }
-    
-    .vehicle-placeholder {
-        padding: 20px 10px;
-        color: #4a90e2;
-        font-size: 10px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100px;
-    }
-    
-    .form-header h2 {
-        font-size: 14px;
-        margin-bottom: 8px;
-        text-align: center;
-        color: #4a90e2;
-        font-weight: 800;
-    }
-    
-    .form-header h3 {
-        font-size: 11px;
-        margin-bottom: 6px;
-    }
-    
-    .customer-info,
-    .vehicle-info,
-    .services-section,
-    .notes-section {
-        margin-bottom: 10px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-        padding: 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(74, 144, 226, 0.25);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-    }
-    
-    .customer-info:hover,
-    .vehicle-info:hover,
-    .services-section:hover,
-    .notes-section:hover {
-        box-shadow: 0 6px 16px rgba(74, 144, 226, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.9) inset;
-        border-color: rgba(74, 144, 226, 0.4);
-    }
-    
-    .customer-info h3,
-    .vehicle-info h3,
-    .services-section h3,
-    .notes-section h3 {
-        font-size: 12px;
         margin-bottom: 10px;
         padding-bottom: 8px;
-        color: #1a1a2e;
-        border-bottom: 2px solid #4a90e2;
+        color: #e0f2fe;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.4);
         font-weight: 700;
-        letter-spacing: 0.4px;
-        text-transform: uppercase;
-        background: linear-gradient(90deg, #4a90e2, #6ab0f3);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
     }
-    
-    .customer-info p,
-    .vehicle-info p {
-        font-size: 9px;
-        word-wrap: break-word;
-        margin: 2px 0;
-        line-height: 1.1;
-    }
-    
-    .customer-info strong,
-    .vehicle-info strong {
-        font-size: 9px;
-        font-weight: 600;
-    }
-    
-    .services-grid {
-        grid-template-columns: 1fr;
-        gap: 1px;
-        justify-content: center;
-        padding: 0 2px;
-        max-width: 100%;
-        overflow: hidden;
-    }
-    
-    .service-item {
-        padding: 2px;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 2px;
-        text-align: center;
-        max-width: 100%;
-    }
-    
-    .service-info {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 2px;
-        flex: 1;
-        overflow: hidden;
-    }
-    
-    .service-name {
-        font-size: 8px;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        margin: 0;
-        flex: 1;
-        text-align: left;
-        line-height: 1;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 60%;
-    }
-    
-    .service-price {
-        font-size: 8px;
-        margin: 0;
-        white-space: nowrap;
-        text-align: right;
-        flex-shrink: 0;
-    }
-    
-    .service-item input[type="checkbox"] {
-        width: 10px;
-        height: 10px;
-        flex-shrink: 0;
-        margin-right: 2px;
-    }
-    
-    .notes-section textarea {
-        padding: 5px;
-        font-size: 10px;
-        width: 100%;
-        box-sizing: border-box;
-        min-height: 40px;
-    }
-    
-    .btn-primary {
-        padding: 6px 10px;
-        font-size: 10px;
-    }
-    
-    /* Modals */
-    .modal-content {
-        width: 95%;
-        max-width: 320px;
-        max-height: 90vh;
-        overflow-x: hidden;
-    }
-    
-    .modal-header h3 {
-        font-size: 16px;
-    }
-    
-    .modal-body {
-        padding: 10px;
-        overflow-x: hidden;
-    }
-    
-    .form-group {
-        margin-bottom: 10px;
-    }
-    
-    .form-group label {
-        font-size: 12px;
-        word-wrap: break-word;
-        margin-bottom: 4px;
-    }
-    
-    .form-group input,
-    .form-group select {
-        padding: 6px;
-        font-size: 12px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .modal-footer {
-        padding: 10px;
-        flex-direction: column;
-        gap: 6px;
-    }
-    
-    .modal-footer button {
-        padding: 6px 10px;
-        font-size: 12px;
-        width: 100%;
-    }
-    
-    .customer-select-wrapper {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
-    }
-    
-    .btn-add-customer {
-        margin-top: 8px;
-        padding: 6px 10px;
-        font-size: 12px;
-        width: 100%;
-    }
+
+    .customer-info p, .vehicle-info p { font-size: 13px; margin: 5px 0; }
+    .customer-info strong, .vehicle-info strong { font-size: 13px; font-weight: 700; }
+
+    .services-grid { grid-template-columns: 1fr; gap: 8px; }
+    .service-item { padding: 10px; }
+    .service-name { font-size: 13px; }
+    .service-price { font-size: 13px; }
+
+    .notes-section textarea { padding: 8px; font-size: 13px; min-height: 60px; }
+    .btn-primary { padding: 10px 16px; font-size: 13px; }
+
+    .modal-content { width: 95%; max-width: 340px; overflow-x: hidden; }
+    .job-modal-content { max-width: 400px; }
+    .modal-header h3 { font-size: 16px; }
+    .modal-body { padding: 12px; overflow-x: hidden; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { font-size: 12px; }
+    .form-group input, .form-group select { padding: 8px; font-size: 12px; }
+    .modal-footer { padding: 12px; flex-direction: column; gap: 8px; }
+    .modal-footer button { padding: 10px; font-size: 13px; width: 100%; }
+    .customer-select-wrapper { flex-direction: column; align-items: stretch; gap: 8px; }
+    .btn-add-customer { margin-top: 8px; padding: 10px; font-size: 13px; width: 100%; }
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 </style>
 @endsection
