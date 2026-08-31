@@ -19,6 +19,11 @@
         <div style="font-size: 1.2em; font-weight: bold; color: #4a90e2;">
             Total: Rs. {{ number_format($job->invoice->total, 2) }}
         </div>
+        @if($job->invoice->discount > 0)
+        <div style="font-size: 1em; color: #10b981; margin-top: 10px;">
+            Discount Applied: Rs. {{ number_format($job->invoice->discount, 2) }}
+        </div>
+        @endif
     </div>
     
     <h3 style="margin-bottom: 20px;">Print Invoice</h3>

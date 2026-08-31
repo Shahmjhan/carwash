@@ -1,6 +1,18 @@
 <?php namespace App\Http\Controllers; use App\Models\{Invoice,Payment}; use Illuminate\Http\Request; use Illuminate\Support\Facades\DB;
 class InvoiceController extends Controller {public function index(){ $invoices=Invoice::with('customer')->latest()->paginate(20);return view('invoices.index',compact('invoices'));} public function show(Invoice $invoice){$invoice->load('customer','job.vehicle','items','payments');return view('invoices.show',compact('invoice'));}    public function printInvoice(Invoice $invoice,$format='a4'){
-        $invoice->load('customer','job.vehicle','items','payments');
+        // Reload invoice from database to get latest values including discount
+        $invoice = Invoice::with('customer','job.vehicle','items','payments')->find($invoice->id);
+        
+        // Log for debugging
+        \Log::info('Print Invoice', [
+            'invoice_id' => $invoice->id,
+            'subtotal' => $invoice->subtotal,
+            'discount' => $invoice->discount,
+            'tax' => $invoice->tax,
+            'total' => $invoice->total,
+            'paid' => $invoice->paid,
+            'balance' => $invoice->balance,
+        ]);
         
         // Get the last payment transaction details from job status history
         $currentPaymentAmount = 0;

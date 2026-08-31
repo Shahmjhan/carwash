@@ -49,37 +49,81 @@ class CashierController extends Controller
         $request->validate([
             'payment_method' => 'required|string',
             'amount_received' => 'required|numeric|min:0',
-            'discount_type' => 'nullable|in:none,amount,percentage',
+            'discount_type' => 'nullable|in:none,apply,amount,percentage',
             'discount_value' => 'nullable|numeric|min:0',
+            'discount_apply_to' => 'nullable|string',
             'coupon_code' => 'nullable|string',
         ]);
 
         $amountReceived = $request->amount_received;
-        $totalDue = $job->invoice ? $job->invoice->total : 0;
+        $subtotal = $job->invoice ? $job->invoice->subtotal : 0;
+        $tax = $job->invoice ? $job->invoice->tax : 0;
         
-        // Calculate discount
+        // Calculate discount based on the new discount structure
         $discountAmount = 0;
         if ($request->filled('discount_type') && $request->discount_type !== 'none') {
             $discountValue = $request->discount_value ?? 0;
-            if ($request->discount_type === 'amount') {
-                $discountAmount = min($discountValue, $totalDue);
-            } elseif ($request->discount_type === 'percentage') {
-                $discountAmount = ($totalDue * $discountValue) / 100;
+            $discountApplyTo = $request->discount_apply_to ?? 'total';
+            
+            // Get services and parts totals for calculations
+            $servicesTotal = $job->services->sum(fn($s) => $s->unit_price * $s->quantity);
+            $partsTotal = $job->parts->sum(fn($p) => $p->unit_price * $p->quantity);
+            
+            if ($request->discount_type === 'apply') {
+                // Apply Discount - full discount on selected category
+                if ($discountApplyTo === 'services') {
+                    $discountAmount = $servicesTotal;
+                } elseif ($discountApplyTo === 'parts') {
+                    $discountAmount = $partsTotal;
+                } elseif ($discountApplyTo === 'individual_services' || $discountApplyTo === 'individual_parts') {
+                    // For individual discounts, the discount_value is already the calculated total discount
+                    $discountAmount = floatval($discountValue);
+                }
+            } elseif ($request->discount_type === 'amount' || $request->discount_type === 'percentage') {
+                // Fixed Amount or Percentage - calculate based on apply_to option
+                $discountBase = $subtotal; // Default to subtotal (total amount before tax)
+                
+                if ($discountApplyTo === 'services') {
+                    $discountBase = $servicesTotal;
+                } elseif ($discountApplyTo === 'parts') {
+                    $discountBase = $partsTotal;
+                }
+                
+                if ($request->discount_type === 'amount') {
+                    $discountAmount = min($discountValue, $discountBase);
+                } elseif ($request->discount_type === 'percentage') {
+                    $discountAmount = ($discountBase * $discountValue) / 100;
+                }
             }
         }
         
-        $finalTotal = $totalDue - $discountAmount;
+        $finalTotal = ($subtotal - $discountAmount) + $tax;
         $balance = $amountReceived - $finalTotal;
 
         // Update invoice with discount and payment details
         if ($job->invoice) {
             $totalPaid = $job->invoice->paid + $amountReceived;
+            
+            // Log for debugging
+            \Log::info('Payment Processing', [
+                'subtotal' => $subtotal,
+                'tax' => $tax,
+                'discount_amount' => $discountAmount,
+                'final_total' => $finalTotal,
+                'amount_received' => $amountReceived,
+                'total_paid' => $totalPaid,
+                'balance' => $finalTotal - $totalPaid,
+            ]);
+            
             $job->invoice->update([
                 'discount' => $discountAmount,
                 'total' => $finalTotal,
                 'paid' => $totalPaid,
                 'balance' => $finalTotal - $totalPaid,
             ]);
+            
+            // Force reload from database to ensure we get the updated values
+            $job->invoice->refresh();
         }
 
         // Only transition if not already paid
@@ -92,6 +136,23 @@ class CashierController extends Controller
 
     public function printOptions(Job $job)
     {
+        // Reload job and invoice from database to get latest values including discount
+        $job = Job::with(['customer', 'vehicle', 'services.service', 'parts.product', 'invoice'])->find($job->id);
+        
+        // Log for debugging
+        if ($job->invoice) {
+            \Log::info('Print Options', [
+                'job_id' => $job->id,
+                'invoice_id' => $job->invoice->id,
+                'subtotal' => $job->invoice->subtotal,
+                'discount' => $job->invoice->discount,
+                'tax' => $job->invoice->tax,
+                'total' => $job->invoice->total,
+                'paid' => $job->invoice->paid,
+                'balance' => $job->invoice->balance,
+            ]);
+        }
+        
         if (!$job->invoice) {
             return redirect()->route('cashier.index')->with('error', 'No invoice found for this job.');
         }

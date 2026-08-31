@@ -107,7 +107,7 @@
                         <span class="total-amount">Rs. {{ number_format($job->invoice->total, 2) }}</span>
                     </div>
                     
-                    <form method="post" action="{{ route('cashier.process-payment', $job) }}" id="paymentForm">
+                    <form method="post" action="{{ route('cashier.process-payment', $job) }}" id="paymentForm" onsubmit="updateHiddenFieldsBeforeSubmit()">
                         @csrf
                         <input type="hidden" name="discount_type" id="discountTypeHidden" value="none">
                         <input type="hidden" name="discount_value" id="discountValueHidden" value="0">
@@ -182,27 +182,36 @@
                         <div class="form-row">
                             <div class="form-section">
                                 <label>Discount Type</label>
-                                <select name="discount_type" id="discountType" onchange="calculateTotal()">
+                                <select name="discount_type" id="discountType" onchange="toggleDiscountOptions()">
                                     <option value="none">No Discount</option>
+                                    <option value="apply">Apply Discount</option>
                                     <option value="amount">Fixed Amount</option>
                                     <option value="percentage">Percentage</option>
                                 </select>
                             </div>
-                            <div class="form-section">
+                            <div class="form-section" id="applyToSection" style="display: none;">
                                 <label>Apply To</label>
                                 <select name="discount_apply_to" id="discountApplyTo" onchange="toggleDiscountSection()">
                                     <option value="total">Total Amount</option>
                                     <option value="services">Services Only</option>
                                     <option value="parts">Parts Only</option>
-                                    <option value="individual_services">Individual Services</option>
-                                    <option value="individual_parts">Individual Parts</option>
                                 </select>
                             </div>
                         </div>
                         
-                        <div class="form-section" id="globalDiscountSection">
+                        <div class="form-section" id="globalDiscountSection" style="display: none;">
                             <label>Discount Value</label>
                             <input type="number" step=".01" name="discount_value" id="discountValue" placeholder="0.00" oninput="calculateTotal()">
+                        </div>
+                        
+                        <div class="form-section" id="applyDiscountSection" style="display: none;">
+                            <label>Apply Discount To</label>
+                            <select name="discount_apply_to" id="discountApplyToSelect" onchange="toggleApplyDiscountSection()">
+                                <option value="services">Services Only</option>
+                                <option value="parts">Parts Only</option>
+                                <option value="individual_services">Individual Services</option>
+                                <option value="individual_parts">Individual Parts</option>
+                            </select>
                         </div>
                         
                         <div class="form-section" id="individualServicesSection" style="display: none;">
@@ -888,36 +897,133 @@ function toggleReferenceField() {
     }
 }
 
-function toggleDiscountSection() {
-    const discountApplyTo = document.getElementById('discountApplyTo').value;
-    const globalSection = document.getElementById('globalDiscountSection');
-    const individualServicesSection = document.getElementById('individualServicesSection');
-    const individualPartsSection = document.getElementById('individualPartsSection');
+function updateHiddenFieldsBeforeSubmit() {
+    const discountType = document.getElementById('discountType').value;
+    document.getElementById('discountTypeHidden').value = discountType;
     
-    // Hide all individual sections first
-    individualServicesSection.style.display = 'none';
-    individualPartsSection.style.display = 'none';
-    
-    if (discountApplyTo === 'individual_services') {
-        globalSection.style.display = 'none';
-        individualServicesSection.style.display = 'block';
-        calculateIndividualDiscounts();
-    } else if (discountApplyTo === 'individual_parts') {
-        globalSection.style.display = 'none';
-        individualPartsSection.style.display = 'block';
-        calculateIndividualDiscounts();
+    if (discountType === 'apply') {
+        const discountApplyTo = document.getElementById('discountApplyToSelect').value;
+        document.getElementById('discountApplyToHidden').value = discountApplyTo;
+        
+        // Calculate current discount amount
+        let discountAmount = 0;
+        if (discountApplyTo === 'services') {
+            discountAmount = servicesTotal;
+        } else if (discountApplyTo === 'parts') {
+            discountAmount = partsTotal;
+        } else if (discountApplyTo === 'individual_services' || discountApplyTo === 'individual_parts') {
+            // Get the calculated discount from the display
+            const discountText = document.getElementById('displayDiscount').textContent;
+            discountAmount = parseFloat(discountText.replace('Rs. ', '')) || 0;
+        }
+        document.getElementById('discountValueHidden').value = discountAmount;
+    } else if (discountType === 'amount' || discountType === 'percentage') {
+        const discountApplyTo = document.getElementById('discountApplyTo').value;
+        const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+        document.getElementById('discountApplyToHidden').value = discountApplyTo;
+        document.getElementById('discountValueHidden').value = discountValue;
     } else {
-        globalSection.style.display = 'block';
-        calculateTotal();
+        document.getElementById('discountValueHidden').value = '0';
+        document.getElementById('discountApplyToHidden').value = 'total';
     }
 }
 
-function calculateIndividualDiscounts() {
+function toggleDiscountOptions() {
+    const discountType = document.getElementById('discountType').value;
+    const applyToSection = document.getElementById('applyToSection');
+    const globalDiscountSection = document.getElementById('globalDiscountSection');
+    const applyDiscountSection = document.getElementById('applyDiscountSection');
+    const individualServicesSection = document.getElementById('individualServicesSection');
+    const individualPartsSection = document.getElementById('individualPartsSection');
+    
+    // Hide all sections first
+    applyToSection.style.display = 'none';
+    globalDiscountSection.style.display = 'none';
+    applyDiscountSection.style.display = 'none';
+    individualServicesSection.style.display = 'none';
+    individualPartsSection.style.display = 'none';
+    
+    // Update hidden field for discount type
+    document.getElementById('discountTypeHidden').value = discountType;
+    
+    if (discountType === 'none') {
+        // No discount - hide everything
+        document.getElementById('discountValueHidden').value = '0';
+        document.getElementById('discountApplyToHidden').value = 'total';
+        calculateTotal();
+    } else if (discountType === 'apply') {
+        // Apply Discount - show apply discount section
+        applyDiscountSection.style.display = 'block';
+    } else if (discountType === 'amount' || discountType === 'percentage') {
+        // Fixed Amount or Percentage - show apply to section and discount value
+        applyToSection.style.display = 'block';
+        globalDiscountSection.style.display = 'block';
+    }
+}
+
+function toggleApplyDiscountSection() {
+    const discountApplyTo = document.getElementById('discountApplyToSelect').value;
+    const individualServicesSection = document.getElementById('individualServicesSection');
+    const individualPartsSection = document.getElementById('individualPartsSection');
+    
+    // Hide individual sections first
+    individualServicesSection.style.display = 'none';
+    individualPartsSection.style.display = 'none';
+    
+    // Update hidden fields immediately
+    document.getElementById('discountTypeHidden').value = 'apply';
+    document.getElementById('discountApplyToHidden').value = discountApplyTo;
+    
+    if (discountApplyTo === 'individual_services') {
+        individualServicesSection.style.display = 'block';
+        calculateIndividualDiscounts();
+    } else if (discountApplyTo === 'individual_parts') {
+        individualPartsSection.style.display = 'block';
+        calculateIndividualDiscounts();
+    } else {
+        // For services only or parts only, calculate global discount
+        calculateApplyDiscount();
+    }
+}
+
+function toggleDiscountSection() {
     const discountApplyTo = document.getElementById('discountApplyTo').value;
+    calculateTotal();
+}
+
+function calculateApplyDiscount() {
+    const discountApplyTo = document.getElementById('discountApplyToSelect').value;
+    let discountAmount = 0;
+    
+    // Update hidden fields for form submission
+    document.getElementById('discountTypeHidden').value = 'apply';
+    document.getElementById('discountApplyToHidden').value = discountApplyTo;
+    
+    if (discountApplyTo === 'services') {
+        discountAmount = servicesTotal; // Full discount on services
+    } else if (discountApplyTo === 'parts') {
+        discountAmount = partsTotal; // Full discount on parts
+    }
+    
+    // Update hidden discount value
+    document.getElementById('discountValueHidden').value = discountAmount;
+    
+    // Calculate new total
+    currentTotal = (subtotal - discountAmount) + tax;
+    currentTotal = Math.max(0, currentTotal);
+    
+    document.getElementById('displayDiscount').textContent = 'Rs. ' + discountAmount.toFixed(2);
+    document.getElementById('displayTotal').textContent = 'Rs. ' + currentTotal.toFixed(2);
+    
+    calculateBalance();
+}
+
+function calculateIndividualDiscounts() {
+    const discountApplyTo = document.getElementById('discountApplyToSelect').value;
     let totalDiscount = 0;
     
     // Update hidden fields for form submission
-    document.getElementById('discountTypeHidden').value = 'amount';
+    document.getElementById('discountTypeHidden').value = 'apply';
     document.getElementById('discountApplyToHidden').value = discountApplyTo;
     
     if (discountApplyTo === 'individual_services') {

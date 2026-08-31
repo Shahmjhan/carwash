@@ -122,12 +122,10 @@
                 <span>Subtotal:</span>
                 <span>Rs. {{ number_format($invoice->subtotal, 0) }}</span>
             </div>
-            @if($invoice->discount > 0)
             <div class="total-row">
                 <span>Discount:</span>
                 <span>-Rs. {{ number_format($invoice->discount, 0) }}</span>
             </div>
-            @endif
             <div class="total-row">
                 <span>Tax:</span>
                 <span>Rs. {{ number_format($invoice->tax, 0) }}</span>
@@ -149,6 +147,11 @@
             <div class="total-row" style="color: #000;">
                 <span>Due:</span>
                 <span>Rs. {{ number_format(abs($currentBalance), 0) }}</span>
+            </div>
+            @else
+            <div class="total-row" style="color: #000;">
+                <span>Balance:</span>
+                <span>Rs. {{ number_format($invoice->balance, 0) }}</span>
             </div>
             @endif
         </div>
