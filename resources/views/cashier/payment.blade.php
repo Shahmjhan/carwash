@@ -109,6 +109,9 @@
                     
                     <form method="post" action="{{ route('cashier.process-payment', $job) }}" id="paymentForm">
                         @csrf
+                        <input type="hidden" name="discount_type" id="discountTypeHidden" value="none">
+                        <input type="hidden" name="discount_value" id="discountValueHidden" value="0">
+                        <input type="hidden" name="discount_apply_to" id="discountApplyToHidden" value="total">
                         <div class="form-section">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <label style="margin: 0; font-size: 16px; font-weight: 600; color: #1e293b;">Payment Method</label>
@@ -913,6 +916,10 @@ function calculateIndividualDiscounts() {
     const discountApplyTo = document.getElementById('discountApplyTo').value;
     let totalDiscount = 0;
     
+    // Update hidden fields for form submission
+    document.getElementById('discountTypeHidden').value = 'amount';
+    document.getElementById('discountApplyToHidden').value = discountApplyTo;
+    
     if (discountApplyTo === 'individual_services') {
         const serviceInputs = document.querySelectorAll('.item-discount-value[data-item-type="service"]');
         serviceInputs.forEach(input => {
@@ -940,6 +947,9 @@ function calculateIndividualDiscounts() {
             }
         });
     }
+    
+    // Update hidden discount value
+    document.getElementById('discountValueHidden').value = totalDiscount;
     
     // Calculate new total with individual discounts
     currentTotal = (subtotal - totalDiscount) + tax;
@@ -1056,6 +1066,11 @@ function calculateTotal() {
     const discountType = document.getElementById('discountType').value;
     const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
     const discountApplyTo = document.getElementById('discountApplyTo').value;
+    
+    // Update hidden fields for form submission
+    document.getElementById('discountTypeHidden').value = discountType;
+    document.getElementById('discountValueHidden').value = discountValue;
+    document.getElementById('discountApplyToHidden').value = discountApplyTo;
     
     let discountAmount = 0;
     let discountBase = 0;

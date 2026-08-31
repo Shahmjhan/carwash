@@ -59,10 +59,13 @@ class CashierController extends Controller
         
         // Calculate discount
         $discountAmount = 0;
-        if ($request->discount_type === 'amount') {
-            $discountAmount = min($request->discount_value, $totalDue);
-        } elseif ($request->discount_type === 'percentage') {
-            $discountAmount = ($totalDue * $request->discount_value) / 100;
+        if ($request->filled('discount_type') && $request->discount_type !== 'none') {
+            $discountValue = $request->discount_value ?? 0;
+            if ($request->discount_type === 'amount') {
+                $discountAmount = min($discountValue, $totalDue);
+            } elseif ($request->discount_type === 'percentage') {
+                $discountAmount = ($totalDue * $discountValue) / 100;
+            }
         }
         
         $finalTotal = $totalDue - $discountAmount;
