@@ -648,8 +648,9 @@
         if (bgDiv && colorSelect && colorSelect.value) {
             bgDiv.style.backgroundImage = 'none';
             bgDiv.style.background = colorSelect.value;
-            customColorInput.value = '';
-            hexInput.value = '';
+            // Clear custom color when predefined color is selected
+            customColorInput.value = '#667eea';
+            hexInput.value = '#667eea';
             customPreview.style.background = '#667eea';
         }
     }

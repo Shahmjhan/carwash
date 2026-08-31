@@ -121,11 +121,24 @@ class SettingsController extends Controller
         } else {
             // Using color, clear image
             $validated['reception_background_image'] = '';
-            if ($request->input('custom_background_color')) {
-                $validated['custom_background_color'] = $request->input('custom_background_color');
+            
+            // Check if a predefined color was selected from radio buttons
+            $selectedPredefinedColor = $request->input('background_color');
+            $customColor = $request->input('custom_background_color');
+            
+            // If a predefined color radio is selected, use it (priority over custom)
+            if ($selectedPredefinedColor && $selectedPredefinedColor !== '') {
+                $validated['background_color'] = $selectedPredefinedColor;
+                $validated['custom_background_color'] = '';
+            } 
+            // Otherwise, use custom color if it's not the default placeholder
+            elseif ($customColor && $customColor !== '#667eea') {
+                $validated['custom_background_color'] = $customColor;
                 $validated['background_color'] = '';
-            } else {
-                $validated['background_color'] = $request->input('background_color') ?? '';
+            } 
+            // Fallback to default gradient
+            else {
+                $validated['background_color'] = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 $validated['custom_background_color'] = '';
             }
         }
