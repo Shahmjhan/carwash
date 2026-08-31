@@ -1,1 +1,86 @@
-@extends('layouts.app') @section('content')<div class="page-head"><div><h1>{{ $invoice->invoice_number }}</h1><p>{{ $invoice->customer->full_name }} · {{ $invoice->job->vehicle->registration_number }}</p></div><button onclick="window.print()" class="secondary">Print</button></div><div class="grid2"><section class="panel"><h2>Invoice</h2><table><thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>@foreach($invoice->items as $item)<tr><td>{{ $item->description }}</td><td>{{ $item->quantity }}</td><td>Rs. {{ number_format($item->unit_price,2) }}</td><td>Rs. {{ number_format($item->line_total,2) }}</td></tr>@endforeach</tbody></table><div class="totals"><span>Total</span><b>Rs. {{ number_format($invoice->total,2) }}</b><span>Paid</span><b>Rs. {{ number_format($invoice->paid,2) }}</b><span>Balance</span><b>Rs. {{ number_format($invoice->balance,2) }}</b></div></section><section class="panel"><h2>Record Payment</h2>@if($invoice->balance>0)<form method="post" action="{{ route('invoices.pay',$invoice) }}">@csrf<label>Amount<input name="amount" type="number" step=".01" max="{{ $invoice->balance }}" value="{{ $invoice->balance }}" required></label><label>Method<select name="method"><option>cash</option><option>card</option><option>bank_transfer</option><option>other</option></select></label><button class="primary">Receive Payment</button></form>@else<p class="statusline"><span class="dot"></span> Paid in full</p>@endif<h3>Payment history</h3>@foreach($invoice->payments as $p)<div class="listrow"><b>{{ ucfirst(str_replace('_',' ',$p->method)) }}</b><span>Rs. {{ number_format($p->amount,2) }} · {{ $p->created_at->format('d M Y H:i') }}</span></div>@endforeach</section></div>@endsection
+@extends('layouts.app')
+@section('content')
+@php
+    $business = auth()->user()->business;
+    $settings = $business ? $business->getBillingSettings() : [
+        'a4_enabled' => true,
+        'thermal_enabled' => true
+    ];
+@endphp
+<div class="page-head">
+    <div>
+        <h1>{{ $invoice->invoice_number }}</h1>
+        <p>{{ $invoice->customer->full_name }} · {{ $invoice->job->vehicle->registration_number }}</p>
+    </div>
+    <div>
+        @if($settings['a4_enabled'])
+            <a href="{{ route('invoices.print',$invoice) }}" target="_blank" class="secondary">Print A4</a>
+        @endif
+        @if($settings['thermal_enabled'])
+            <a href="{{ route('invoices.print',['invoice'=>$invoice,'format'=>'thermal']) }}" target="_blank" class="secondary">Print Receipt</a>
+        @endif
+    </div>
+</div>
+<div class="grid2">
+    <section class="panel">
+        <h2>Invoice</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($invoice->items as $item)
+                    <tr>
+                        <td>{{ $item->description }}</td>
+                        <td>{{ $item->quantity }}</td>
+                        <td>Rs. {{ number_format($item->unit_price,2) }}</td>
+                        <td>Rs. {{ number_format($item->line_total,2) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+        <div class="totals">
+            <span>Total</span>
+            <b>Rs. {{ number_format($invoice->total,2) }}</b>
+            <span>Paid</span>
+            <b>Rs. {{ number_format($invoice->paid,2) }}</b>
+            <span>Balance</span>
+            <b>Rs. {{ number_format($invoice->balance,2) }}</b>
+        </div>
+    </section>
+    <section class="panel">
+        <h2>Record Payment</h2>
+        @if($invoice->balance>0)
+            <form method="post" action="{{ route('invoices.pay',$invoice) }}">
+                @csrf
+                <label>Amount
+                    <input name="amount" type="number" step=".01" max="{{ $invoice->balance }}" value="{{ $invoice->balance }}" required>
+                </label>
+                <label>Method
+                    <select name="method">
+                        <option>cash</option>
+                        <option>card</option>
+                        <option>bank_transfer</option>
+                        <option>other</option>
+                    </select>
+                </label>
+                <button class="primary">Receive Payment</button>
+            </form>
+        @else
+            <p class="statusline"><span class="dot"></span> Paid in full</p>
+        @endif
+        <h3>Payment history</h3>
+        @foreach($invoice->payments as $p)
+            <div class="listrow">
+                <b>{{ ucfirst(str_replace('_',' ',$p->method)) }}</b>
+                <span>Rs. {{ number_format($p->amount,2) }} · {{ $p->created_at->format('d M Y H:i') }}</span>
+            </div>
+        @endforeach
+    </section>
+</div>
+@endsection

@@ -7,7 +7,7 @@
     </div>
     <a class="primary" href="{{ route('jobs.create') }}">+ New Job</a>
 </div>
-<div class="kanban">
+<div class="kanban" id="jobBoard">
     @foreach($kanbanColumns as $column)
     <section class="kanban-col" data-status="{{ $column['id'] }}">
         <h3 class="status-{{ $column['color'] }}">
@@ -30,4 +30,28 @@
     </section>
     @endforeach
 </div>
+
+<script>
+let lastUpdate = {{ now()->timestamp }};
+function refreshJobBoard() {
+    fetch('{{ route('jobs.board') }}', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newBoard = doc.getElementById('jobBoard');
+        const currentBoard = document.getElementById('jobBoard');
+        if (newBoard && currentBoard) {
+            currentBoard.innerHTML = newBoard.innerHTML;
+        }
+    })
+    .catch(error => console.error('Error refreshing job board:', error));
+}
+
+setInterval(refreshJobBoard, 2000);
+</script>
 @endsection

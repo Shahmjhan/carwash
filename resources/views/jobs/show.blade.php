@@ -26,27 +26,22 @@
         <h2>Actions</h2>
         <div class="actions">
             <a href="{{ route('jobs.inspection.edit',$job) }}">Digital Inspection</a>
-            @if($job->status->value==='inspection_completed')
-                <form method="post" action="{{ route('jobs.approve',$job) }}">
-                    @csrf
-                    <button>Approve Estimate</button>
-                </form>
-            @endif
-            @if($job->status->value==='completed' && !$job->invoice)
-                <form method="post" action="{{ route('jobs.status',$job) }}">
-                    @csrf
-                    <input type="hidden" name="status" value="ready_for_payment">
-                    <button>Mark Ready for Payment</button>
-                </form>
-            @endif
+            <form method="post" action="{{ route('jobs.status',$job) }}">
+                @csrf
+                <label>Change Status
+                    <select name="status" required>
+                        <option value="" disabled selected>{{ $job->status->getLabel() }}</option>
+                        @foreach(\App\Enums\JobStatus::cases() as $status)
+                            @if($job->status->canTransitionTo($status))
+                                <option value="{{ $status->value }}">{{ $status->getLabel() }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                </label>
+                <button>Update Status</button>
+            </form>
             @if($job->invoice)
                 <a href="{{ route('invoices.show',$job->invoice) }}">Open Invoice</a>
-            @else
-                <form method="post" action="{{ route('jobs.status',$job) }}">
-                    @csrf
-                    <input type="hidden" name="status" value="completed">
-                    <button>Complete Service</button>
-                </form>
             @endif
         </div>
     </section>
@@ -86,15 +81,18 @@
         <h3>Consume inventory part</h3>
         <form class="inline-form" method="post" action="{{ route('jobs.consume-part',$job) }}">
             @csrf
-            <select name="product_id">
+            <select name="product_id" id="productSelect" onchange="updateSellingPrice()">
+                <option value="">Select Product</option>
                 @foreach($products as $p)
-                    <option value="{{ $p->id }}">{{ $p->name }} — Rs. {{ number_format($p->selling_price,2) }}</option>
+                    <option value="{{ $p->id }}" data-price="{{ $p->selling_price }}">{{ $p->name }} — Rs. {{ number_format($p->selling_price,2) }}</option>
                 @endforeach
             </select>
             <input name="quantity" type="number" step=".001" value="1">
-            <input name="unit_price" type="number" step=".01" placeholder="Selling price">
+            <input name="unit_price" type="number" step=".01" placeholder="Selling price" id="unitPriceInput">
             <button>Consume</button>
         </form>
     </section>
 </div>
+
+<script>function updateSellingPrice(){const select=document.getElementById('productSelect');const selectedOption=select.options[select.selectedIndex];const priceInput=document.getElementById('unitPriceInput');if(selectedOption.value){priceInput.value=selectedOption.getAttribute('data-price');}else{priceInput.value='';}}</script>
 @endsection
