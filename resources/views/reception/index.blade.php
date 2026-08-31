@@ -26,7 +26,16 @@
     }
 @endphp
 
-<div class="reception-container" style="{{ $bgStyle }}">
+<style>
+    :root {
+        --reception-background: {!! $receptionBackground !!};
+    }
+</style>
+
+<div class="reception-container"
+    @if($receptionBackgroundType === 'image')
+        style="--reception-background: {{ $receptionBackground }};"
+    @endif>
     <div id="toastContainer"></div>
     
     <!-- Navigation Menu -->
@@ -711,11 +720,6 @@ document.addEventListener('click', (e) => {
     pointer-events: none;
 }
 
-/* Remove dark overlay when custom background is set */
-.reception-container.custom-bg::before {
-    display: none;
-}
-
 .reception-container > * {
     position: relative;
     z-index: 1;
@@ -741,8 +745,6 @@ document.addEventListener('click', (e) => {
     font-weight: 700;
     letter-spacing: -0.5px;
     line-height: 1.2;
-    animation: blink 2s ease-in-out infinite;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .reception-header p {
@@ -750,29 +752,6 @@ document.addEventListener('click', (e) => {
     font-size: 18px;
     margin: 0;
     font-weight: 400;
-    animation: blink 2s ease-in-out infinite;
-    animation-delay: 0.5s;
-    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
-}
-
-@keyframes blink {
-    0%, 100% {
-        opacity: 1;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        opacity: 0.7;
-        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(74, 144, 226, 0.3);
-    }
-}
-
-.reception-header h1:hover {
-    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(74, 144, 226, 0.3);
-    transform: scale(1.02);
-}
-
-.reception-header p:hover {
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 20px rgba(74, 144, 226, 0.2);
 }
 
 /* ---------------------------------------------------------
