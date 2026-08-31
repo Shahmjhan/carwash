@@ -4,10 +4,24 @@
 @php
     $business = auth()->user()->business;
     $settings = $business ? $business->getBillingSettings() : [];
+    $bgType = $settings['background_type'] ?? 'image';
     $bgImage = $settings['reception_background_image'] ?? '';
+    $bgColor = $settings['background_color'] ?? '';
+    $customBgColor = $settings['custom_background_color'] ?? '';
+    
+    $bgStyle = '';
+    if ($bgType === 'color' && $customBgColor) {
+        $bgStyle = "background: {$customBgColor};";
+    } elseif ($bgType === 'color' && $bgColor) {
+        $bgStyle = "background: {$bgColor};";
+    } elseif ($bgImage) {
+        $bgStyle = "background-image: url('{{ asset($bgImage) }}');";
+    } else {
+        $bgStyle = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);";
+    }
 @endphp
 
-<div class="reception-container" @if($bgImage) style="background-image: url('{{ asset($bgImage) }}');" @endif>
+<div class="reception-container" style="{{ $bgStyle }}">
     <div id="toastContainer"></div>
     
     <!-- Navigation Menu -->

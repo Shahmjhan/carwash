@@ -32,7 +32,6 @@ class UserController extends Controller
             'role' => 'nullable|exists:roles,slug',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
-            'branch_id' => 'nullable|exists:branches,id',
             'active' => 'boolean',
         ]);
 
@@ -41,7 +40,6 @@ class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'] ?? 'staff',
-            'branch_id' => $validated['branch_id'] ?? auth()->user()->branch_id,
             'business_id' => auth()->user()->business_id,
             'active' => $validated['active'] ?? true,
         ]);
@@ -79,7 +77,15 @@ class UserController extends Controller
         $roles = Role::all();
         $permissions = Permission::all()->groupBy('module');
         $userRoles = $user->roles->pluck('slug')->toArray();
-        $userPermissions = $user->roles()->with('permissions')->get()->pluck('permissions')->flatten()->pluck('id')->toArray();
+        
+        // Get all permissions from all roles assigned to the user
+        $userPermissions = [];
+        foreach ($user->roles as $role) {
+            foreach ($role->permissions as $permission) {
+                $userPermissions[] = $permission->id;
+            }
+        }
+        $userPermissions = array_unique($userPermissions);
         
         return view('users.edit', compact('user', 'roles', 'permissions', 'userRoles', 'userPermissions'));
     }
@@ -93,7 +99,6 @@ class UserController extends Controller
             'role' => 'nullable|exists:roles,slug',
             'permissions' => 'nullable|array',
             'permissions.*' => 'exists:permissions,id',
-            'branch_id' => 'nullable|exists:branches,id',
             'active' => 'boolean',
         ]);
 
@@ -101,7 +106,6 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'] ?? 'staff',
-            'branch_id' => $validated['branch_id'] ?? $user->branch_id,
             'active' => $validated['active'] ?? true,
         ]);
 

@@ -79,7 +79,7 @@
         @endphp
 
         @if($settings['logo_path'])
-            <img src="{{ asset($settings['logo_path']) }}" alt="Logo" style="max-width: 50mm; max-height: 20mm; margin-bottom: 10px;">
+            <img src="{{ asset($settings['logo_path']) }}" alt="Logo" style="max-width: 50mm; max-height: {{ $settings['logo_size_thermal'] ?? 40 }}px; margin-bottom: 10px;">
         @endif
         <div class="company-name">{{ $settings['company_name'] }}</div>
         <div class="company-details">

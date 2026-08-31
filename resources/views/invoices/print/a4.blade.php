@@ -64,7 +64,7 @@
         <div class="header">
             <div class="company-info">
                 @if($settings['logo_path'])
-                    <img src="{{ asset($settings['logo_path']) }}" alt="Logo" style="max-height: 60px; margin-bottom: 10px;">
+                    <img src="{{ asset($settings['logo_path']) }}" alt="Logo" style="max-height: {{ $settings['logo_size_a4'] ?? 60 }}px; margin-bottom: 10px;">
                 @endif
                 <h1>{{ $settings['company_name'] }}</h1>
                 @if($settings['address'])<p>{{ $settings['address'] }}</p>@endif

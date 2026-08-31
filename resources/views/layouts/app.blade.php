@@ -12,16 +12,16 @@
         <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
         <div class="brand">AUTO<span>CARE</span><small>PRO</small></div>
         <nav>
-            @if(auth()->user()->hasPermission('view_jobs'))
+            @if(auth()->user()->hasPermission('view_reception'))
                 <a href="{{ route('reception.index') }}" class="reception-link">🚗 Reception</a>
             @endif
             @if(auth()->user()->hasPermission('view_dashboard'))
                 <a href="{{ route('dashboard') }}">Dashboard</a>
             @endif
-            @if(auth()->user()->hasPermission('view_board_jobs'))
+            @if(auth()->user()->hasPermission('view_live_job_board'))
                 <a href="{{ route('jobs.board') }}">Live Job Board</a>
             @endif
-            @if(auth()->user()->hasPermission('view_jobs'))
+            @if(auth()->user()->hasPermission('view_job_cards'))
                 <a href="{{ route('jobs.index') }}">Job Cards</a>
             @endif
             @if(auth()->user()->hasPermission('view_customers'))
@@ -33,11 +33,11 @@
             @if(auth()->user()->hasPermission('view_appointments'))
                 <a href="{{ route('appointments.index') }}">Appointments</a>
             @endif
-            @if(auth()->user()->hasPermission('view_inventory'))
+            @if(auth()->user()->hasPermission('view_item_master'))
                 <a href="{{ route('inventory.index') }}">Item Master</a>
                 <a href="{{ route('categories.index') }}">Categories</a>
             @endif
-            @if(auth()->user()->hasPermission('view_invoices'))
+            @if(auth()->user()->hasPermission('view_billing'))
                 <a href="{{ route('invoices.index') }}">Billing</a>
                 <a href="{{ route('cashier.index') }}" class="cashier-link">
                     💰 Cashier
