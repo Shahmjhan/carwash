@@ -1,4 +1,3 @@
-
 @extends('layouts.reception')
 
 @section('content')
@@ -32,11 +31,13 @@
     }
 </style>
 
+{{-- Toast outside reception-container so it is never trapped under modal blur --}}
+<div id="toastContainer"></div>
+
 <div class="reception-container"
     @if($receptionBackgroundType === 'image')
         style="--reception-background: {{ $receptionBackground }};"
     @endif>
-    <div id="toastContainer"></div>
     
     <!-- Navigation Menu -->
     <div class="reception-nav">
@@ -76,6 +77,31 @@
                 <button class="modal-close" onclick="closeVehicleModal()">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- Vehicle Image Upload -->
+                <div class="form-group">
+                    <label>Vehicle Image</label>
+                    <div class="image-upload-area" id="vehicleImageUploadArea">
+                        <div class="image-preview" id="vehicleImagePreview" style="display:none;">
+                            <img id="vehiclePreviewImg" src="" alt="Vehicle preview">
+                            <button type="button" class="btn-remove-image" onclick="removeVehicleImage()" title="Remove image">&times;</button>
+                        </div>
+                        <div class="image-upload-placeholder" id="vehicleImagePlaceholder">
+                            <div class="upload-icon">📷</div>
+                            <p>Add vehicle photo</p>
+                            <div class="upload-actions">
+                                <button type="button" class="btn-upload" onclick="openLiveCamera('vehicle')">
+                                    📷 Camera
+                                </button>
+                                <label class="btn-upload btn-upload-secondary" for="vehicleImageInput">
+                                    <input type="file" id="vehicleImageInput" accept="image/*" style="display:none;">
+                                    🖼️ Gallery / Files
+                                </label>
+                            </div>
+                            <small class="upload-hint">Phone: Camera or Gallery · Desktop: choose either</small>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Registration Number *</label>
                     <input type="text" id="modalVehicleRegistration" placeholder="Enter registration number">
@@ -158,6 +184,17 @@
                             <span>Vehicle Image</span>
                         </div>
                     </div>
+                    <!-- Change image buttons in job form -->
+                    <div class="job-image-actions">
+                        <button type="button" class="btn-change-image" onclick="openLiveCamera('job')">
+                            📷 Camera
+                        </button>
+                        <label class="btn-change-image" for="jobVehicleImageInput">
+                            <input type="file" id="jobVehicleImageInput" accept="image/*" style="display:none;">
+                            🖼️ Gallery / Files
+                        </label>
+                        <button type="button" id="removeJobImageBtn" class="btn-remove-job-image" onclick="removeJobImage()" style="display:none;">Remove</button>
+                    </div>
                 </div>
 
                 <div class="info-row">
@@ -190,14 +227,62 @@
     </div>
 </div>
 
+    <!-- Live Camera Modal (desktop + phone) -->
+    <div id="liveCameraModal" class="modal">
+        <div class="modal-content" style="max-width:640px;">
+            <div class="modal-header">
+                <h3>Take Photo</h3>
+                <button class="modal-close" onclick="closeLiveCamera()">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align:center;">
+                <video id="liveCameraVideo" autoplay playsinline style="width:100%;max-height:360px;border-radius:12px;background:#000;"></video>
+                <canvas id="liveCameraCanvas" style="display:none;"></canvas>
+                <p id="liveCameraError" style="color:#fca5a5;display:none;margin-top:12px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-primary" onclick="captureLivePhoto()">Capture</button>
+                <button type="button" class="btn-secondary" onclick="closeLiveCamera()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
 <script>
 let selectedCustomer = null;
 let selectedVehicle = null;
 let selectedServices = [];
 let searchTimeout = null;
 
+// Image state
+let vehicleImageFile = null;           // File object for new vehicle
+let vehicleImagePreviewDataUrl = null; // data URL kept until job form opens
+let jobImageFile = null;               // File object when changing image in job form
+let jobImagePreviewUrl = null;         // Object URL or existing image URL for job form
+
+// Build a usable image URL from whatever the API returns
+function resolveImageUrl(image) {
+    if (!image || typeof image !== 'string') return null;
+    if (
+        image.startsWith('http://') ||
+        image.startsWith('https://') ||
+        image.startsWith('blob:') ||
+        image.startsWith('data:')
+    ) {
+        return image;
+    }
+    return '/storage/' + image.replace(/^\/+/, '');
+}
+
 function showToast(message, type = 'success') {
-    const container = document.getElementById('toastContainer');
+    let container = document.getElementById('toastContainer');
+    // Ensure toast container is a direct child of body (above everything)
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toastContainer';
+        document.body.appendChild(container);
+    } else if (container.parentElement !== document.body) {
+        document.body.appendChild(container);
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
@@ -220,11 +305,225 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
     }
 });
 
-// Cancel button now just delegates to closeJobModal(), which owns
-// all of the "reset the form" cleanup in one place.
 document.getElementById('cancelBtn').addEventListener('click', closeJobModal);
-
 document.getElementById('createJobBtn').addEventListener('click', createJob);
+
+// Wire gallery/file inputs
+document.getElementById('vehicleImageInput')?.addEventListener('change', handleVehicleImageSelect);
+document.getElementById('jobVehicleImageInput')?.addEventListener('change', handleJobImageSelect);
+
+// ---------- Live camera (works on desktop + phone) ----------
+let liveCameraStream = null;
+let liveCameraTarget = null; // 'vehicle' or 'job'
+
+async function openLiveCamera(target) {
+    liveCameraTarget = target;
+    const modal = document.getElementById('liveCameraModal');
+    const video = document.getElementById('liveCameraVideo');
+    const errEl = document.getElementById('liveCameraError');
+    errEl.style.display = 'none';
+    errEl.textContent = '';
+    modal.classList.add('active');
+
+    // Stop any previous stream
+    if (liveCameraStream) {
+        liveCameraStream.getTracks().forEach(t => t.stop());
+        liveCameraStream = null;
+    }
+
+    try {
+        // Prefer back camera when available
+        liveCameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } },
+            audio: false
+        });
+        video.srcObject = liveCameraStream;
+        await video.play();
+    } catch (err) {
+        console.error(err);
+        // Fallback: any camera
+        try {
+            liveCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            video.srcObject = liveCameraStream;
+            await video.play();
+        } catch (err2) {
+            errEl.textContent = 'Camera access denied or not available. Use Gallery / Files instead.';
+            errEl.style.display = 'block';
+            showToast('Camera not available', 'error');
+        }
+    }
+}
+
+function closeLiveCamera() {
+    const modal = document.getElementById('liveCameraModal');
+    const video = document.getElementById('liveCameraVideo');
+    if (liveCameraStream) {
+        liveCameraStream.getTracks().forEach(t => t.stop());
+        liveCameraStream = null;
+    }
+    if (video) video.srcObject = null;
+    modal.classList.remove('active');
+    liveCameraTarget = null;
+}
+
+function captureLivePhoto() {
+    const video = document.getElementById('liveCameraVideo');
+    const canvas = document.getElementById('liveCameraCanvas');
+    if (!video || !video.videoWidth) {
+        showToast('Camera not ready yet', 'error');
+        return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(function (blob) {
+        if (!blob) {
+            showToast('Could not capture photo', 'error');
+            return;
+        }
+        const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+
+        if (liveCameraTarget === 'vehicle') {
+            // Feed into vehicle image flow
+            vehicleImageFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                vehicleImagePreviewDataUrl = e.target.result;
+                document.getElementById('vehiclePreviewImg').src = vehicleImagePreviewDataUrl;
+                document.getElementById('vehicleImagePreview').style.display = 'block';
+                document.getElementById('vehicleImagePlaceholder').style.display = 'none';
+                showToast('Photo captured', 'success');
+            };
+            reader.readAsDataURL(file);
+        } else if (liveCameraTarget === 'job') {
+            jobImageFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                jobImagePreviewUrl = e.target.result;
+                const container = document.getElementById('vehicleImageContainer');
+                if (container) {
+                    container.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.src = jobImagePreviewUrl;
+                    img.alt = 'Vehicle Image';
+                    img.style.cssText = 'width:100%;height:auto;display:block;object-fit:cover;min-height:180px;';
+                    container.appendChild(img);
+                }
+                const removeBtn = document.getElementById('removeJobImageBtn');
+                if (removeBtn) removeBtn.style.display = 'inline-block';
+                showToast('Photo captured', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        closeLiveCamera();
+    }, 'image/jpeg', 0.92);
+}
+
+// ---------- Vehicle image (Add New Vehicle modal) ----------
+function handleVehicleImageSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image must be under 5MB', 'error');
+        return;
+    }
+
+    vehicleImageFile = file;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        vehicleImagePreviewDataUrl = e.target.result;
+        document.getElementById('vehiclePreviewImg').src = vehicleImagePreviewDataUrl;
+        document.getElementById('vehicleImagePreview').style.display = 'block';
+        document.getElementById('vehicleImagePlaceholder').style.display = 'none';
+        showToast('Photo selected', 'success');
+    };
+    reader.onerror = () => showToast('Could not read image', 'error');
+    reader.readAsDataURL(file);
+}
+
+function removeVehicleImage() {
+    vehicleImageFile = null;
+    vehicleImagePreviewDataUrl = null;
+    const input = document.getElementById('vehicleImageInput');
+    if (input) input.value = '';
+    const cameraInput = document.getElementById('vehicleImageCameraInput');
+    if (cameraInput) cameraInput.value = '';
+    const previewImg = document.getElementById('vehiclePreviewImg');
+    if (previewImg) previewImg.src = '';
+    const preview = document.getElementById('vehicleImagePreview');
+    if (preview) preview.style.display = 'none';
+    const placeholder = document.getElementById('vehicleImagePlaceholder');
+    if (placeholder) placeholder.style.display = 'block';
+}
+
+// ---------- Job form image (edit existing vehicle image) ----------
+function handleJobImageSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image must be under 5MB', 'error');
+        return;
+    }
+
+    jobImageFile = file;
+
+    // Revoke previous object URL if any
+    if (jobImagePreviewUrl && jobImagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(jobImagePreviewUrl);
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        jobImagePreviewUrl = e.target.result;
+        const container = document.getElementById('vehicleImageContainer');
+        if (container) {
+            container.innerHTML = `<img src="${jobImagePreviewUrl}" alt="Vehicle Image" style="width:100%;height:auto;display:block;object-fit:cover;min-height:180px;">`;
+        }
+        const removeBtn = document.getElementById('removeJobImageBtn');
+        if (removeBtn) removeBtn.style.display = 'inline-block';
+        showToast('Photo selected', 'success');
+    };
+    reader.onerror = function () {
+        showToast('Could not read image file', 'error');
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeJobImage() {
+    jobImageFile = null;
+    if (jobImagePreviewUrl && jobImagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(jobImagePreviewUrl);
+    }
+    jobImagePreviewUrl = null;
+
+    const galleryInput = document.getElementById('jobVehicleImageInput');
+    if (galleryInput) galleryInput.value = '';
+    const cameraInput = document.getElementById('jobVehicleCameraInput');
+    if (cameraInput) cameraInput.value = '';
+    document.getElementById('vehicleImageContainer').innerHTML = `
+        <div class="vehicle-placeholder">
+            <span>Vehicle Image</span>
+        </div>
+    `;
+    document.getElementById('removeJobImageBtn').style.display = 'none';
+}
 
 async function performSearch(query) {
     const response = await fetch('/reception/search', {
@@ -244,7 +543,6 @@ function displaySearchResults(data) {
     const resultsDiv = document.getElementById('searchResults');
     
     if (!data.found || (data.vehicles && data.vehicles.length === 0)) {
-        // Show option to add new vehicle when no results found
         const query = document.getElementById('searchInput').value.trim();
         resultsDiv.innerHTML = `
             <div class="result-card">
@@ -276,11 +574,26 @@ function openVehicleModal(registration = '') {
     const modal = document.getElementById('vehicleModal');
     modal.classList.add('active');
     document.getElementById('modalVehicleRegistration').value = decodeURIComponent(registration);
+    removeVehicleImage(); // reset image each time
     loadCustomersForModal();
 }
 
-function closeVehicleModal() {
+function closeVehicleModal(keepPreview = false) {
     document.getElementById('vehicleModal').classList.remove('active');
+    if (!keepPreview) {
+        removeVehicleImage();
+    } else {
+        // Only clear the modal UI, keep vehicleImagePreviewDataUrl / vehicleImageFile
+        // for the job form (they will be cleared when job modal closes)
+        const input = document.getElementById('vehicleImageInput');
+        if (input) input.value = '';
+        const preview = document.getElementById('vehicleImagePreview');
+        if (preview) preview.style.display = 'none';
+        const placeholder = document.getElementById('vehicleImagePlaceholder');
+        if (placeholder) placeholder.style.display = 'block';
+        const previewImg = document.getElementById('vehiclePreviewImg');
+        if (previewImg) previewImg.src = '';
+    }
 }
 
 function openCustomerModal() {
@@ -292,9 +605,6 @@ function closeCustomerModal() {
     document.getElementById('customerModal').classList.remove('active');
 }
 
-// FIX: closing the job card (via the X button OR the Cancel button)
-// now fully resets the search box and all selected state, so a
-// leftover registration number can't linger for the next check-in.
 function closeJobModal() {
     document.getElementById('jobModal').classList.remove('active');
     document.getElementById('searchResults').innerHTML = '';
@@ -302,6 +612,15 @@ function closeJobModal() {
     selectedCustomer = null;
     selectedVehicle = null;
     selectedServices = [];
+
+    // Clean up job image state
+    if (jobImagePreviewUrl && jobImagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(jobImagePreviewUrl);
+    }
+    jobImageFile = null;
+    jobImagePreviewUrl = null;
+    document.getElementById('jobVehicleImageInput').value = '';
+    document.getElementById('removeJobImageBtn').style.display = 'none';
 }
 
 async function loadCustomersForModal() {
@@ -340,31 +659,42 @@ async function createVehicleFromModal() {
     }
 
     try {
+        // Use FormData so we can send the image file
+        const formData = new FormData();
+        formData.append('customer_id', customerId);
+        formData.append('registration_number', registration);
+        formData.append('make', make);
+        formData.append('model', model);
+        formData.append('category', category);
+        if (vehicleImageFile) {
+            formData.append('image', vehicleImageFile);
+        }
+
         const response = await fetch('/vehicles', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                // Do NOT set Content-Type — browser sets multipart/form-data with boundary
             },
-            body: JSON.stringify({
-                customer_id: customerId,
-                registration_number: registration,
-                make: make,
-                model: model,
-                category: category
-            })
+            body: formData
         });
 
         const data = await response.json();
         
         if (response.ok) {
             showToast('Vehicle created successfully!', 'success');
-            closeVehicleModal();
-            // Ensure vehicle_id is set correctly
-            // FIX: include category (fall back to what was picked in the
-            // modal in case the server response doesn't echo it back),
-            // otherwise it shows as "undefined" in the job form.
+
+            // Prefer server URL, otherwise use the local preview we saved when picking the photo
+            const imageForJob =
+                resolveImageUrl(data.image_url || data.image || null) ||
+                vehicleImagePreviewDataUrl ||
+                null;
+
+            // Capture customer name before closing modal (modal fields get cleared)
+            const customerSelect = document.getElementById('modalVehicleCustomer');
+            const customerName = customerSelect?.selectedOptions?.[0]?.text?.split(' - ')[0] || '';
+
             selectedVehicle = {
                 vehicle_id: data.id,
                 id: data.id,
@@ -372,12 +702,21 @@ async function createVehicleFromModal() {
                 make: data.make,
                 model: data.model,
                 category: data.category || category,
-                customer_id: data.customer_id
+                customer_id: data.customer_id,
+                image: imageForJob
             };
-            selectedCustomer = { id: customerId, name: '' };
+            selectedCustomer = { id: customerId, name: customerName };
+
+            // Clear modal UI but keep preview data for the job form
+            closeVehicleModal(true);
+
             document.getElementById('searchResults').innerHTML = '';
             document.getElementById('searchInput').value = registration;
             showJobForm();
+
+            // Done with the create-vehicle preview
+            vehicleImageFile = null;
+            vehicleImagePreviewDataUrl = null;
         } else {
             const errorMsg = data.error || data.message || 'Error creating vehicle';
             showToast(errorMsg, 'error');
@@ -417,7 +756,6 @@ async function createCustomerFromModal() {
         if (response.ok) {
             showToast('Customer created successfully!', 'success');
             closeCustomerModal();
-            // Reload customer list and select the new customer
             loadCustomersForModal().then(() => {
                 document.getElementById('modalVehicleCustomer').value = data.id;
             });
@@ -443,7 +781,8 @@ function selectVehicleDirect(vehicle) {
         make: vehicle.make ?? '',
         model: vehicle.model ?? '',
         category: vehicle.category ?? '',
-        customer_id: vehicle.customer_id
+        customer_id: vehicle.customer_id,
+        image: resolveImageUrl(vehicle.image_url || vehicle.image || null)
     };
 
     document.getElementById('searchResults').innerHTML = '';
@@ -496,7 +835,8 @@ function selectVehicle(vehicle) {
         make: vehicle.make ?? '',
         model: vehicle.model ?? '',
         category: vehicle.category ?? '',
-        customer_id: vehicle.customer_id
+        customer_id: vehicle.customer_id,
+        image: resolveImageUrl(vehicle.image_url || vehicle.image || null)
     };
 
     showJobForm();
@@ -506,9 +846,10 @@ function showJobForm() {
     document.getElementById('searchResults').innerHTML = '';
     document.getElementById('jobModal').classList.add('active');
 
-    // ---------------------------------------------------------
-    // Customer information
-    // ---------------------------------------------------------
+    // Reset job image edit state
+    jobImageFile = null;
+    jobImagePreviewUrl = resolveImageUrl(selectedVehicle?.image) || null;
+
     document.getElementById('customerDetails').innerHTML = `
         <p>
             <strong>Name:</strong>
@@ -516,30 +857,39 @@ function showJobForm() {
         </p>
     `;
 
-    // ---------------------------------------------------------
-    // Vehicle image
-    // ---------------------------------------------------------
-    const vehicleImageContainer =
-        document.getElementById('vehicleImageContainer');
+    const vehicleImageContainer = document.getElementById('vehicleImageContainer');
+    const imageUrl = resolveImageUrl(selectedVehicle?.image);
 
-    if (selectedVehicle?.image) {
-        vehicleImageContainer.innerHTML = `
-            <img
-                src="${selectedVehicle.image}"
-                alt="Vehicle Image"
-            >
-        `;
+    vehicleImageContainer.innerHTML = '';
+    if (imageUrl) {
+        const img = document.createElement('img');
+        img.alt = 'Vehicle Image';
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.objectFit = 'cover';
+        img.style.minHeight = '180px';
+        img.onerror = function () {
+            vehicleImageContainer.innerHTML = '<div class="vehicle-placeholder"><span>Vehicle Image</span></div>';
+            const btn = document.getElementById('removeJobImageBtn');
+            if (btn) btn.style.display = 'none';
+        };
+        img.onload = function () {
+            const btn = document.getElementById('removeJobImageBtn');
+            if (btn) btn.style.display = 'inline-block';
+        };
+        img.src = imageUrl;
+        vehicleImageContainer.appendChild(img);
+        document.getElementById('removeJobImageBtn').style.display = 'inline-block';
     } else {
         vehicleImageContainer.innerHTML = `
             <div class="vehicle-placeholder">
                 <span>Vehicle Image</span>
             </div>
         `;
+        document.getElementById('removeJobImageBtn').style.display = 'none';
     }
 
-    // ---------------------------------------------------------
-    // Vehicle information
-    // ---------------------------------------------------------
     const category = selectedVehicle?.category;
 
     document.getElementById('vehicleDetails').innerHTML = `
@@ -547,13 +897,11 @@ function showJobForm() {
             <strong>Registration:</strong>
             ${selectedVehicle?.registration_number ?? ''}
         </p>
-
         <p>
             <strong>Make/Model:</strong>
             ${selectedVehicle?.make ?? ''}
             ${selectedVehicle?.model ?? ''}
         </p>
-
         <p>
             <strong>Category:</strong>
             ${category || 'Not specified'}
@@ -600,18 +948,24 @@ async function createJob() {
     createBtn.textContent = 'Creating Job...';
 
     try {
+        // Use FormData so we can optionally send a new image
+        const formData = new FormData();
+        formData.append('customer_id', selectedCustomer.id);
+        formData.append('vehicle_id', selectedVehicle.vehicle_id);
+        selectedServices.forEach(id => formData.append('service_ids[]', id));
+        formData.append('notes', document.getElementById('jobNotes').value);
+
+        if (jobImageFile) {
+            formData.append('vehicle_image', jobImageFile);
+        }
+
         const response = await fetch('/reception/job', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                // Do NOT set Content-Type for FormData
             },
-            body: JSON.stringify({
-                customer_id: selectedCustomer.id,
-                vehicle_id: selectedVehicle.vehicle_id,
-                service_ids: selectedServices,
-                notes: document.getElementById('jobNotes').value
-            })
+            body: formData
         });
 
         const data = await response.json();
@@ -638,7 +992,6 @@ function toggleNav() {
     navMenu.classList.toggle('active');
 }
 
-// Close nav menu when clicking outside
 document.addEventListener('click', (e) => {
     const navMenu = document.getElementById('navMenu');
     const navToggle = document.querySelector('.nav-toggle');
@@ -651,9 +1004,6 @@ document.addEventListener('click', (e) => {
 <style>
 /* =========================================================
    TOKENS
-   A workshop diagnostic-screen feel: deep steel-blue base,
-   one cyan accent, glass surfaces used only where they help
-   (search, cards, modal) — not stacked everywhere.
    ========================================================= */
 :root {
     --ink: #060a14;
@@ -725,10 +1075,6 @@ document.addEventListener('click', (e) => {
     z-index: 1;
 }
 
-/* ---------------------------------------------------------
-   Header — static, legible. No infinite blink: it's the
-   first thing a receptionist reads dozens of times a shift.
-   --------------------------------------------------------- */
 .reception-header {
     text-align: center;
     margin-bottom: 44px;
@@ -754,9 +1100,6 @@ document.addEventListener('click', (e) => {
     font-weight: 400;
 }
 
-/* ---------------------------------------------------------
-   Nav
-   --------------------------------------------------------- */
 .reception-nav {
     position: fixed;
     top: 20px;
@@ -824,9 +1167,6 @@ document.addEventListener('click', (e) => {
     background: rgba(239, 68, 68, 0.14);
 }
 
-/* ---------------------------------------------------------
-   Search
-   --------------------------------------------------------- */
 .search-section {
     margin-bottom: 30px;
     position: relative;
@@ -873,9 +1213,6 @@ document.addEventListener('click', (e) => {
     min-height: 100px;
 }
 
-/* ---------------------------------------------------------
-   Result cards — one entrance animation on render only.
-   --------------------------------------------------------- */
 .result-card {
     position: relative;
     padding: 24px;
@@ -955,14 +1292,11 @@ document.addEventListener('click', (e) => {
     font-size: 16px;
 }
 
-/* ---------------------------------------------------------
-   Toasts
-   --------------------------------------------------------- */
 #toastContainer {
-    position: fixed;
+    position: fixed !important;
     top: 80px;
     right: 20px;
-    z-index: 10000;
+    z-index: 99999 !important; /* always above modals + blur overlay */
     pointer-events: none;
 }
 
@@ -996,16 +1330,145 @@ document.addEventListener('click', (e) => {
     color: #721c24;
 }
 
-/* ---------------------------------------------------------
-   Job card content — lives inside the job modal now, so it
-   reuses the same section styling as before but without its
-   own outer panel (the modal-content supplies that).
+/* ---------- Image upload styles ---------- */
+.image-upload-area {
+    border: 1px dashed rgba(186, 230, 253, 0.35);
+    border-radius: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.08), rgba(59, 130, 246, 0.04));
+    text-align: center;
+}
 
-   "Age-friendly" pass: bigger type, more generous line
-   height and spacing, softer/rounder cards, higher-contrast
-   labels — comfortable to read for anyone, not just people
-   with sharp near vision.
-   --------------------------------------------------------- */
+.image-upload-placeholder .upload-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+.image-upload-placeholder p {
+    color: var(--text);
+    margin: 0 0 12px;
+    font-size: 14px;
+}
+
+.upload-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-upload:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.btn-upload-secondary {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(186, 230, 253, 0.35);
+    color: var(--text);
+}
+
+.btn-upload-secondary:hover {
+    background: rgba(56, 189, 248, 0.2);
+    box-shadow: none;
+}
+
+.upload-hint {
+    display: block;
+    margin-top: 10px;
+    color: var(--text-dim);
+    font-size: 12px;
+}
+
+.image-preview {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 12px;
+    display: block;
+    object-fit: cover;
+}
+
+.btn-remove-image {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.job-image-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.btn-change-image {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text);
+    border: 1px solid rgba(186, 230, 253, 0.3);
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.btn-change-image:hover {
+    background: rgba(56, 189, 248, 0.2);
+}
+
+.btn-remove-job-image {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.btn-remove-job-image:hover {
+    background: rgba(239, 68, 68, 0.35);
+}
+
 .vehicle-image-section {
     margin-bottom: 25px;
     text-align: center;
@@ -1046,7 +1509,6 @@ document.addEventListener('click', (e) => {
     min-height: 200px;
 }
 
-/* Customer + Vehicle information side by side */
 .info-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1168,9 +1630,6 @@ document.addEventListener('click', (e) => {
     flex: 1;
 }
 
-/* ---------------------------------------------------------
-   Buttons — one calm hover treatment each, no idle motion.
-   --------------------------------------------------------- */
 .btn-primary {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
     color: white;
@@ -1231,9 +1690,6 @@ document.addEventListener('click', (e) => {
     display: none;
 }
 
-/* ---------------------------------------------------------
-   Modals
-   --------------------------------------------------------- */
 .modal {
     display: none;
     position: fixed;
@@ -1272,16 +1728,10 @@ document.addEventListener('click', (e) => {
     animation: modalGlassIn 0.3s cubic-bezier(.2,.8,.2,1);
 }
 
-/* Job card modal needs more room now that customer + vehicle
-   info sit side by side, and reads better a bit wider overall.
-   It keeps the same blue family as the rest of the app but a
-   touch lighter/brighter than the base modal — this is the
-   "taking care of the customer" moment, so it gets a slightly
-   airier, higher-key version of the shared blue palette. */
 .job-modal-content {
     max-width: 960px;
-    --job-accent: #7dd3fc;        /* lighter sky blue */
-    --job-accent-deep: #38bdf8;   /* brighter accent blue */
+    --job-accent: #7dd3fc;
+    --job-accent-deep: #38bdf8;
     --job-panel-border: rgba(186, 230, 253, 0.30);
     --job-text-warm: #e6f6ff;
 }
@@ -1355,22 +1805,6 @@ document.addEventListener('click', (e) => {
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.07), rgba(59, 130, 246, 0.04));
 }
 
-.form-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.form-actions button {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-}
-
 .form-group {
     margin-bottom: 15px;
 }
@@ -1411,11 +1845,6 @@ document.addEventListener('click', (e) => {
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
 }
 
-/* Native <select> dropdown panels render outside our
-   glassmorphism (the browser draws them), so the option list
-   was showing default white-on-black-ish system colors.
-   Force a dark background + light text on the options
-   themselves so the open dropdown matches the theme. */
 .form-group select option,
 .customer-select-wrapper select option {
     background-color: #0b1224;
@@ -1451,13 +1880,6 @@ document.addEventListener('click', (e) => {
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.9), rgba(37, 99, 235, 0.9));
 }
 
-/* ---------------------------------------------------------
-   Job Card Modal — lighter blue palette applied to its inner
-   sections (image box, customer/vehicle panels, service
-   cards, notes, and the primary action button). Scoped
-   entirely under .job-modal-content so nothing else in
-   the app is affected.
-   --------------------------------------------------------- */
 .job-modal-content .info-row .customer-info,
 .job-modal-content .info-row .vehicle-info {
     background: linear-gradient(135deg, rgba(186, 230, 253, 0.18), rgba(125, 211, 252, 0.08));
@@ -1528,9 +1950,6 @@ document.addEventListener('click', (e) => {
     box-shadow: 0 8px 22px rgba(56, 189, 248, 0.5);
 }
 
-/* ---------------------------------------------------------
-   Responsive
-   --------------------------------------------------------- */
 @media (max-width: 768px) {
     .reception-header h1 { font-size: 32px; }
     .reception-header p { font-size: 15px; }
@@ -1543,11 +1962,6 @@ document.addEventListener('click', (e) => {
     .nav-menu { min-width: 180px; padding: 10px; }
     .nav-menu a { padding: 8px 12px; font-size: 14px; }
 
-    .form-header h2 { font-size: 22px; }
-    .customer-info p, .vehicle-info p { font-size: 14px; }
-
-    /* Stack customer/vehicle info back to one column on
-       narrower screens so nothing gets cramped. */
     .info-row { grid-template-columns: 1fr; gap: 15px; }
 
     .modal-content { width: 95%; max-width: 450px; overflow-x: hidden; }
@@ -1630,7 +2044,6 @@ document.addEventListener('click', (e) => {
     .btn-add-customer { margin-top: 8px; padding: 10px; font-size: 13px; width: 100%; }
 }
 
-/* Respect reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
