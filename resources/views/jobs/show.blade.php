@@ -81,18 +81,60 @@
         <h3>Consume inventory part</h3>
         <form class="inline-form" method="post" action="{{ route('jobs.consume-part',$job) }}">
             @csrf
-            <select name="product_id" id="productSelect" onchange="updateSellingPrice()">
+            <select name="product_id" id="productSelect" onchange="updateSellingPrice(); updateStockInfo()">
                 <option value="">Select Product</option>
                 @foreach($products as $p)
-                    <option value="{{ $p->id }}" data-price="{{ $p->selling_price }}">{{ $p->name }} — Rs. {{ number_format($p->selling_price,2) }}</option>
+                    @php
+                        $inventory = \App\Models\Inventory::where('product_id', $p->id)->where('branch_id', $job->branch_id)->first();
+                        $availableStock = $inventory ? $inventory->quantity : 0;
+                    @endphp
+                    <option value="{{ $p->id }}" data-price="{{ $p->selling_price }}" data-stock="{{ $availableStock }}">{{ $p->name }} — Rs. {{ number_format($p->selling_price,2) }} (Stock: {{ $availableStock }})</option>
                 @endforeach
             </select>
-            <input name="quantity" type="number" step=".001" value="1">
+            <input name="quantity" type="number" step=".001" value="1" min="0.001">
             <input name="unit_price" type="number" step=".01" placeholder="Selling price" id="unitPriceInput">
             <button>Consume</button>
         </form>
+        <div id="stockWarning" style="margin-top:10px;display:none;padding:8px;background:#fee2e2;border:1px solid #fecaca;border-radius:6px;color:#dc2626;font-size:13px;"></div>
     </section>
 </div>
 
-<script>function updateSellingPrice(){const select=document.getElementById('productSelect');const selectedOption=select.options[select.selectedIndex];const priceInput=document.getElementById('unitPriceInput');if(selectedOption.value){priceInput.value=selectedOption.getAttribute('data-price');}else{priceInput.value='';}}</script>
+<script>
+function updateSellingPrice(){
+    const select=document.getElementById('productSelect');
+    const selectedOption=select.options[select.selectedIndex];
+    const priceInput=document.getElementById('unitPriceInput');
+    if(selectedOption.value){
+        priceInput.value=selectedOption.getAttribute('data-price');
+    }else{
+        priceInput.value='';
+    }
+}
+
+function updateStockInfo(){
+    const select=document.getElementById('productSelect');
+    const selectedOption=select.options[select.selectedIndex];
+    const stockWarning=document.getElementById('stockWarning');
+    const quantityInput=document.querySelector('input[name="quantity"]');
+    
+    if(selectedOption.value){
+        const availableStock=parseFloat(selectedOption.getAttribute('data-stock'));
+        const requestedQty=parseFloat(quantityInput.value)||1;
+        
+        if(availableStock===0){
+            stockWarning.textContent='⚠️ This product is out of stock!';
+            stockWarning.style.display='block';
+        }else if(availableStock<requestedQty){
+            stockWarning.textContent='⚠️ Insufficient stock. Available: '+availableStock+', Requested: '+requestedQty;
+            stockWarning.style.display='block';
+        }else{
+            stockWarning.style.display='none';
+        }
+    }else{
+        stockWarning.style.display='none';
+    }
+}
+
+document.querySelector('input[name="quantity"]').addEventListener('input',updateStockInfo);
+</script>
 @endsection

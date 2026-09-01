@@ -6,6 +6,28 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'AutoCare Pro' }}</title>
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <style>
+        .sidebar-toggle {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 30px !important;
+            height: 30px !important;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer !important;
+            padding: 0 !important;
+            margin-right: 15px !important;
+        }
+
+        #sidebarToggle {
+            transition: transform 0.3s ease !important;
+        }
+
+        #sidebarToggle.collapsed svg {
+            transform: rotate(180deg) !important;
+        }
+    </style>
 </head>
 <body>
     <aside class="sidebar" id="sidebar">
@@ -115,12 +137,14 @@
         <a href="{{ route('logout') }}" class="logout">Sign out</a>
     </aside>
     <main class="main">
-        <header>
-            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div style="position:fixed;top:15px;left:15px;z-index:9999;">
+            <button id="sidebarToggle" aria-label="Toggle menu" style="display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;background:white !important;border:1px solid #e5e7eb !important;border-radius:8px !important;cursor:pointer !important;padding:0 !important;box-shadow:0 2px 4px rgba(0,0,0,0.1) !important;z-index:9999 !important;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
+        </div>
+        <header style="padding-left:60px;">
             <div>
                 <strong>{{ auth()->user()->name }}</strong>
                 <span class="muted"> · {{ str_replace('_',' ',ucfirst(auth()->user()->role)) }}</span>
@@ -198,6 +222,35 @@
             transform: rotate(180deg);
         }
 
+        header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 15px 20px !important;
+            background: white !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        header > div {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+        }
+
+        .sidebar-toggle {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 30px !important;
+            height: 30px !important;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer !important;
+            padding: 0 !important;
+            margin-right: 15px !important;
+            transition: transform 0.3s ease !important;
+        }
+
         .sidebar-close {
             display: none;
             position: absolute;
@@ -206,13 +259,15 @@
             background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
-            font-size: 24px;
-            width: 35px;
-            height: 35px;
+            font-size: 18px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             cursor: pointer;
             z-index: 1001;
             transition: all 0.3s ease;
+            align-items: center;
+            justify-content: center;
         }
 
         .sidebar-close:hover {
@@ -251,21 +306,49 @@
             padding: 25px 10px 20px 10px;
         }
 
+        aside.sidebar nav {
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: calc(100vh - 150px);
+        }
+
+        aside.sidebar nav::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        aside.sidebar nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        aside.sidebar nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        aside.sidebar nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         aside.sidebar nav a {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             color: rgba(255, 255, 255, 0.8);
-            padding: 12px 20px;
+            padding: 10px 15px;
             text-decoration: none;
             transition: all 0.3s ease;
-            border-radius: 8px;
-            margin-bottom: 4px;
+            border-radius: 6px;
+            margin-bottom: 3px;
+            font-size: 14px;
         }
 
         aside.sidebar nav a svg {
             flex-shrink: 0;
             color: white;
+            width: 18px;
+            height: 18px;
         }
 
         aside.sidebar nav a span {
@@ -312,20 +395,29 @@
         }
 
         @media (min-width: 1025px) {
+            .sidebar-toggle {
+                display: flex !important;
+            }
+
             aside.sidebar {
-                transition: margin-left 0.3s ease;
+                width: 300px !important;
+                margin-left: 0 !important;
+                transition: margin-left 0.3s ease !important;
             }
 
             aside.sidebar.collapsed {
-                margin-left: -280px;
+                margin-left: -300px !important;
             }
 
             .main {
-                transition: margin-left 0.3s ease;
+                margin-left: 300px !important;
+                transition: margin-left 0.3s ease !important;
+                width: calc(100% - 300px) !important;
             }
 
             .main.expanded {
-                margin-left: 0;
+                margin-left: 0 !important;
+                width: 100% !important;
             }
         }
 
@@ -340,10 +432,10 @@
 
             aside.sidebar {
                 position: fixed !important;
-                left: -280px !important;
+                left: -260px !important;
                 top: 0 !important;
                 height: 100vh !important;
-                width: 280px !important;
+                width: 260px !important;
                 z-index: 1000 !important;
                 transition: left 0.3s ease !important;
                 background: #0a1f33 !important;
@@ -354,52 +446,15 @@
                 left: 0 !important;
             }
 
-            aside.sidebar nav {
-                display: flex !important;
-                flex-direction: column !important;
-                padding: 15px !important;
-            }
-
             aside.sidebar nav a {
-                background: rgba(255, 255, 255, 0.05) !important;
-                color: white !important;
-                padding: 12px 15px !important;
-                border-radius: 0 !important;
-                text-align: left !important;
+                padding: 9px 14px !important;
                 font-size: 14px !important;
-                transition: all 0.3s ease !important;
-                margin-bottom: 2px !important;
-                display: block !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
+                gap: 9px !important;
             }
 
-            aside.sidebar nav a:nth-child(odd) {
-                background: rgba(255, 255, 255, 0.08) !important;
-            }
-
-            aside.sidebar nav a:nth-child(even) {
-                background: rgba(255, 255, 255, 0.03) !important;
-            }
-
-            aside.sidebar nav a:hover {
-                background: rgba(74, 144, 226, 0.3) !important;
-                padding-left: 20px !important;
-            }
-
-            aside.sidebar .brand {
-                color: white !important;
-                text-align: center !important;
-                padding: 25px 10px 20px 10px !important;
-            }
-
-            aside.sidebar .logout {
-                background: rgba(255, 255, 255, 0.1) !important;
-                color: white !important;
-                text-align: left !important;
-                margin: 15px !important;
-                padding: 12px 15px !important;
-                border-radius: 0 !important;
+            aside.sidebar nav a svg {
+                width: 17px !important;
+                height: 17px !important;
             }
 
             .main {
@@ -422,10 +477,10 @@
 
             aside.sidebar {
                 position: fixed !important;
-                left: -280px !important;
+                left: -250px !important;
                 top: 0 !important;
                 height: 100vh !important;
-                width: 280px !important;
+                width: 250px !important;
                 z-index: 1000 !important;
                 transition: left 0.3s ease !important;
                 background: #0a1f33 !important;
@@ -436,52 +491,15 @@
                 left: 0 !important;
             }
 
-            aside.sidebar nav {
-                display: flex !important;
-                flex-direction: column !important;
-                padding: 15px !important;
-            }
-
             aside.sidebar nav a {
-                background: rgba(255, 255, 255, 0.05) !important;
-                color: white !important;
-                padding: 12px 15px !important;
-                border-radius: 0 !important;
-                text-align: left !important;
+                padding: 9px 13px !important;
                 font-size: 14px !important;
-                transition: all 0.3s ease !important;
-                margin-bottom: 2px !important;
-                display: block !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
+                gap: 9px !important;
             }
 
-            aside.sidebar nav a:nth-child(odd) {
-                background: rgba(255, 255, 255, 0.08) !important;
-            }
-
-            aside.sidebar nav a:nth-child(even) {
-                background: rgba(255, 255, 255, 0.03) !important;
-            }
-
-            aside.sidebar nav a:hover {
-                background: rgba(74, 144, 226, 0.3) !important;
-                padding-left: 20px !important;
-            }
-
-            aside.sidebar .brand {
-                color: white !important;
-                text-align: center !important;
-                padding: 25px 10px 20px 10px !important;
-            }
-
-            aside.sidebar .logout {
-                background: rgba(255, 255, 255, 0.1) !important;
-                color: white !important;
-                text-align: left !important;
-                margin: 15px !important;
-                padding: 12px 15px !important;
-                border-radius: 0 !important;
+            aside.sidebar nav a svg {
+                width: 17px !important;
+                height: 17px !important;
             }
 
             .main {
@@ -495,23 +513,24 @@
 
         @media (max-width: 480px) {
             aside.sidebar {
-                width: 260px !important;
-                left: -260px !important;
-                background: #0a1f33 !important;
+                width: 240px !important;
+                left: -240px !important;
             }
 
             aside.sidebar nav a {
-                padding: 10px 12px !important;
+                padding: 8px 12px !important;
                 font-size: 13px !important;
+                gap: 8px !important;
+            }
+
+            aside.sidebar nav a svg {
+                width: 16px !important;
+                height: 16px !important;
             }
 
             .sidebar-toggle {
                 width: 24px;
-                height: 20px;
-            }
-
-            .sidebar-toggle span {
-                height: 2px;
+                height: 24px;
             }
         }
 
