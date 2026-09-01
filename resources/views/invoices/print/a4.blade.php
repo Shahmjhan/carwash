@@ -27,6 +27,11 @@
         .items-table th { background: #f8f9fa; border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold; color: #2c3e50; }
         .items-table td { border: 1px solid #ddd; padding: 10px; }
         .items-table tr:nth-child(even) { background: #f9f9f9; }
+        .item-discount {
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+        }
         .totals { width: 300px; margin-left: auto; }
         .totals-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
         .totals-row.grand-total { font-size: 16px; font-weight: bold; color: #2c3e50; border-top: 2px solid #333; border-bottom: none; margin-top: 10px; padding-top: 15px; }
@@ -112,11 +117,30 @@
             <tbody>
                 @foreach($invoice->items as $item)
                     <tr>
-                        <td>{{ $item->description }}</td>
+                        <td>
+                            {{ $item->description }}
+
+                            @if((float) $item->discount > 0)
+                                <div class="item-discount">
+                                    Discount:
+                                    -Rs. {{ number_format($item->discount, 2) }}
+                                </div>
+                            @endif
+                        </td>
+
                         <td>{{ $item->quantity }}</td>
-                        <td>Rs. {{ number_format($item->unit_price, 2) }}</td>
-                        <td>Rs. {{ number_format($item->tax, 2) }}</td>
-                        <td>Rs. {{ number_format($item->line_total, 2) }}</td>
+
+                        <td>
+                            Rs. {{ number_format($item->unit_price, 2) }}
+                        </td>
+
+                        <td>
+                            Rs. {{ number_format($item->tax, 2) }}
+                        </td>
+
+                        <td>
+                            Rs. {{ number_format($item->line_total, 2) }}
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

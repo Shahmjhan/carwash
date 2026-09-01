@@ -49,6 +49,11 @@
         .item-qty { text-align: center; font-weight: bold; }
         .item-price { text-align: right; font-weight: bold; }
         .item-total { text-align: right; font-weight: 900; }
+        .item-discount {
+            font-size: 10px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
         .totals { text-align: right; margin-bottom: 12px; font-size: 12px; }
         .total-row { display: flex; justify-content: space-between; margin: 3px 0; }
         .grand-total { font-size: 14px; font-weight: 900; border-top: 2px solid #000; margin-top: 8px; padding-top: 8px; }
@@ -107,10 +112,28 @@
         <table class="items-table">
             @foreach($invoice->items as $item)
                 <tr>
-                    <td class="item-name">{{ substr($item->description, 0, 20) }}</td>
-                    <td class="item-qty">{{ $item->quantity }}</td>
-                    <td class="item-price">{{ number_format($item->unit_price, 0) }}</td>
-                    <td class="item-total">{{ number_format($item->line_total, 0) }}</td>
+                    <td class="item-name">
+                        {{ substr($item->description, 0, 20) }}
+
+                        @if((float) $item->discount > 0)
+                            <div class="item-discount">
+                                Disc:
+                                -Rs. {{ number_format($item->discount, 0) }}
+                            </div>
+                        @endif
+                    </td>
+
+                    <td class="item-qty">
+                        {{ $item->quantity }}
+                    </td>
+
+                    <td class="item-price">
+                        {{ number_format($item->unit_price, 0) }}
+                    </td>
+
+                    <td class="item-total">
+                        {{ number_format($item->line_total, 0) }}
+                    </td>
                 </tr>
             @endforeach
         </table>

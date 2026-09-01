@@ -35,10 +35,29 @@ class DashboardController extends Controller {public function __construct(privat
         ->get();
     
     // Get low stock items
-    $lowStockItems = Product::where('quantity', '<=', 10)
-        ->orderBy('quantity', 'asc')
-        ->limit(10)
-        ->get();
+    $lowStockItems = Product::query()
+        ->with(['inventory' => function ($query) use ($branch) {
+            if ($branch) {
+                $query->where('branch_id', $branch);
+            }
+        }])
+        ->whereHas('inventory', function ($query) use ($branch) {
+            if ($branch) {
+                $query->where('branch_id', $branch);
+            }
+        })
+        ->get()
+        ->filter(function ($product) {
+            $inventory = $product->inventory->first();
+
+            return $inventory &&
+                $inventory->quantity <= $product->minimum_stock;
+        })
+        ->sortBy(function ($product) {
+            return $product->inventory->first()->quantity;
+        })
+        ->take(10)
+        ->values();
     
     // Calculate payment rate
     $totalInvoices = Invoice::count();
