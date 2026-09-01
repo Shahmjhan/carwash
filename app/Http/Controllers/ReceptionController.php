@@ -28,12 +28,12 @@ class ReceptionController extends Controller
             ]);
         }
 
-        // Same working logic as your original code
         $vehicles = Vehicle::where('registration_number', 'like', "%{$query}%")
             ->with(['customer:id,full_name'])
             ->limit(10)
             ->get()
             ->map(function ($vehicle) {
+
                 return [
                     'vehicle_id'          => $vehicle->id,
                     'registration_number' => $vehicle->registration_number,
@@ -42,9 +42,11 @@ class ReceptionController extends Controller
                     'category'            => $vehicle->category,
                     'customer_id'         => $vehicle->customer_id,
                     'customer_name'       => $vehicle->customer->full_name ?? 'Unknown',
-                    'image'               => $vehicle->image,
-                    'image_url'           => $vehicle->image
-                        ? asset('storage/' . $vehicle->image)
+
+                    'image' => $vehicle->image,
+
+                    'image_url' => $vehicle->image
+                        ? route('reception.vehicle-image', $vehicle)
                         : null,
                 ];
             });
@@ -53,6 +55,37 @@ class ReceptionController extends Controller
             'found'    => $vehicles->isNotEmpty(),
             'vehicles' => $vehicles,
         ]);
+    }
+
+    public function vehicleImage(Vehicle $vehicle)
+    {
+        $businessId = auth()->user()->business_id;
+
+        // Vehicle does not have business_id.
+        // Verify ownership through the vehicle's customer.
+        $vehicle = Vehicle::whereKey($vehicle->id)
+            ->whereHas('customer', function ($query) use ($businessId) {
+                $query->where('business_id', $businessId);
+            })
+            ->firstOrFail();
+
+        if (!$vehicle->image) {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+
+        if (!$disk->exists($vehicle->image)) {
+            abort(404);
+        }
+
+        return $disk->response(
+            $vehicle->image,
+            null,
+            [
+                'Cache-Control' => 'public, max-age=86400',
+            ]
+        );
     }
 
     public function createJob(Request $request)
