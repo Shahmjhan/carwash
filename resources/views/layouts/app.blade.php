@@ -21,10 +21,16 @@
         }
 
         #sidebarToggle {
-            transition: transform 0.3s ease !important;
+            transition: all 0.3s ease !important;
+        }
+
+        #sidebarToggle.collapsed {
+            background: #2563eb !important;
+            border-color: #2563eb !important;
         }
 
         #sidebarToggle.collapsed svg {
+            stroke: white !important;
             transform: rotate(180deg) !important;
         }
     </style>
@@ -137,19 +143,21 @@
         <a href="{{ route('logout') }}" class="logout">Sign out</a>
     </aside>
     <main class="main">
-        <div style="position:fixed;top:15px;left:15px;z-index:9999;">
-            <button id="sidebarToggle" aria-label="Toggle menu" style="display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;background:white !important;border:1px solid #e5e7eb !important;border-radius:8px !important;cursor:pointer !important;padding:0 !important;box-shadow:0 2px 4px rgba(0,0,0,0.1) !important;z-index:9999 !important;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div style="position:fixed;top:15px;left:15px;z-index:100000;">
+            <button id="sidebarToggle" aria-label="Toggle menu" style="display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;background:white !important;border:1px solid #e5e7eb !important;border-radius:8px !important;cursor:pointer !important;padding:0 !important;box-shadow:0 2px 8px rgba(0,0,0,0.15) !important;z-index:100000 !important;transition:all 0.3s ease !important;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:stroke 0.3s ease !important;">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
         </div>
-        <header style="padding-left:60px;">
-            <div>
-                <strong>{{ auth()->user()->name }}</strong>
-                <span class="muted"> · {{ str_replace('_',' ',ucfirst(auth()->user()->role)) }}</span>
+        <header style="padding-left:70px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                <div></div>
+                <div>
+                    <strong>{{ auth()->user()->name }}</strong>
+                    <span class="muted"> · {{ str_replace('_',' ',ucfirst(auth()->user()->role)) }}</span>
+                </div>
             </div>
-            <div class="branch">{{ optional(auth()->user()->branch)->name ?? 'All branches' }}</div>
         </header>
         @if(session('success'))
             <div class="toast success">{{ session('success') }}</div>
@@ -167,7 +175,7 @@
         const sidebarClose = document.getElementById('sidebarClose');
         const sidebar = document.getElementById('sidebar');
         const main = document.querySelector('.main');
-        
+
         sidebarToggle.addEventListener('click', () => {
             if (window.innerWidth <= 1024) {
                 // Mobile/tablet - use active class for slide-in
@@ -177,9 +185,20 @@
                 sidebar.classList.toggle('collapsed');
                 main.classList.toggle('expanded');
                 sidebarToggle.classList.toggle('collapsed');
+
+                // Update button styles directly
+                if (sidebarToggle.classList.contains('collapsed')) {
+                    sidebarToggle.style.background = '#2563eb';
+                    sidebarToggle.style.borderColor = '#2563eb';
+                    sidebarToggle.querySelector('svg').style.stroke = 'white';
+                } else {
+                    sidebarToggle.style.background = 'white';
+                    sidebarToggle.style.borderColor = '#e5e7eb';
+                    sidebarToggle.querySelector('svg').style.stroke = '#1a1a2e';
+                }
             }
         });
-        
+
         sidebarClose.addEventListener('click', () => {
             sidebar.classList.remove('active');
         });
