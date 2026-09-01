@@ -77,7 +77,6 @@
                 <button class="modal-close" onclick="closeVehicleModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Vehicle Image Upload -->
                 <div class="form-group">
                     <label>Vehicle Image</label>
                     <div class="image-upload-area" id="vehicleImageUploadArea">
@@ -184,7 +183,6 @@
                             <span>Vehicle Image</span>
                         </div>
                     </div>
-                    <!-- Change image buttons in job form -->
                     <div class="job-image-actions">
                         <button type="button" class="btn-change-image" onclick="openLiveCamera('job')">
                             📷 Camera
@@ -214,6 +212,90 @@
                     <div id="servicesList" class="services-grid"></div>
                 </div>
 
+                <div class="products-section">
+                    <h3>Products / Parts</h3>
+
+                    <div class="product-search-wrapper">
+                        <input
+                            type="text"
+                            id="productSearch"
+                            class="form-input"
+                            placeholder="Search products by name, SKU or part number..."
+                            oninput="filterReceptionProducts()"
+                        >
+                    </div>
+
+                    <div id="productsList" class="products-grid"></div>
+
+                    <div id="selectedProductsList" class="selected-products-list"></div>
+                </div>
+
+                <div class="discount-section">
+                    <div class="form-group">
+                        <label for="receptionDiscountType">Discount</label>
+                        <select id="receptionDiscountType" onchange="handleReceptionDiscountTypeChange()">
+                            <option value="none">No Discount</option>
+                            <option value="amount">Fixed Amount</option>
+                            <option value="percentage">Percentage</option>
+                        </select>
+                    </div>
+
+                    <div id="receptionDiscountOptions" style="display: none;">
+                        <div class="form-group">
+                            <label for="receptionDiscountValue">Discount Value</label>
+                            <div class="discount-input-wrapper">
+                                <input
+                                    type="number"
+                                    id="receptionDiscountValue"
+                                    min="0"
+                                    step="0.01"
+                                    value="0"
+                                    oninput="calculateReceptionDiscount()"
+                                >
+                                <span id="receptionDiscountSuffix">Rs.</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="receptionDiscountApplyTo">Apply Discount To</label>
+                            <select id="receptionDiscountApplyTo" onchange="calculateReceptionDiscount()">
+                                <option value="total">Total</option>
+                                <option value="services">Services</option>
+                                <option value="parts">Products / Parts</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reception-summary">
+                    <div class="summary-row">
+                        <span>Services Total</span>
+                        <strong id="receptionServicesTotal">Rs. 0.00</strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Products / Parts Total</span>
+                        <strong id="receptionProductsTotal">Rs. 0.00</strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <strong id="receptionSubtotal">Rs. 0.00</strong>
+                    </div>
+
+                    <div class="summary-row">
+                        <span>Discount</span>
+                        <strong id="receptionDiscount">- Rs. 0.00</strong>
+                    </div>
+
+                    <div class="summary-divider"></div>
+
+                    <div class="summary-row total-row">
+                        <span>Estimated Total</span>
+                        <strong id="receptionGrandTotal">Rs. 0.00</strong>
+                    </div>
+                </div>
+
                 <div class="notes-section">
                     <h3>Notes</h3>
                     <textarea id="jobNotes" rows="3" placeholder="Additional notes..."></textarea>
@@ -227,38 +309,47 @@
     </div>
 </div>
 
-    <!-- Live Camera Modal (desktop + phone) -->
-    <div id="liveCameraModal" class="modal">
-        <div class="modal-content" style="max-width:640px;">
-            <div class="modal-header">
-                <h3>Take Photo</h3>
-                <button class="modal-close" onclick="closeLiveCamera()">&times;</button>
-            </div>
-            <div class="modal-body" style="text-align:center;">
-                <video id="liveCameraVideo" autoplay playsinline style="width:100%;max-height:360px;border-radius:12px;background:#000;"></video>
-                <canvas id="liveCameraCanvas" style="display:none;"></canvas>
-                <p id="liveCameraError" style="color:#fca5a5;display:none;margin-top:12px;"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-primary" onclick="captureLivePhoto()">Capture</button>
-                <button type="button" class="btn-secondary" onclick="closeLiveCamera()">Cancel</button>
-            </div>
+<!-- Live Camera Modal -->
+<div id="liveCameraModal" class="modal">
+    <div class="modal-content" style="max-width:640px;">
+        <div class="modal-header">
+            <h3>Take Photo</h3>
+            <button class="modal-close" onclick="closeLiveCamera()">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align:center;">
+            <video id="liveCameraVideo" autoplay playsinline style="width:100%;max-height:360px;border-radius:12px;background:#000;"></video>
+            <canvas id="liveCameraCanvas" style="display:none;"></canvas>
+            <p id="liveCameraError" style="color:#fca5a5;display:none;margin-top:12px;"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-primary" onclick="captureLivePhoto()">Capture</button>
+            <button type="button" class="btn-secondary" onclick="closeLiveCamera()">Cancel</button>
         </div>
     </div>
+</div>
 
 <script>
 let selectedCustomer = null;
 let selectedVehicle = null;
 let selectedServices = [];
+let selectedProducts = [];
 let searchTimeout = null;
 
-// Image state
-let vehicleImageFile = null;           // File object for new vehicle
-let vehicleImagePreviewDataUrl = null; // data URL kept until job form opens
-let jobImageFile = null;               // File object when changing image in job form
-let jobImagePreviewUrl = null;         // Object URL or existing image URL for job form
+// Cache of full service objects (id + base_price) loaded from /reception/services,
+// needed because selectedServices only stores the checked ids.
+let receptionServices = [];
 
-// Build a usable image URL from whatever the API returns
+// Discount state (Bill Summary)
+let receptionDiscountType = 'none';
+let receptionDiscountValue = 0;
+let receptionDiscountApplyTo = 'total';
+
+// Image state
+let vehicleImageFile = null;
+let vehicleImagePreviewDataUrl = null;
+let jobImageFile = null;
+let jobImagePreviewUrl = null;
+
 function resolveImageUrl(image) {
     if (!image || typeof image !== 'string') return null;
     if (
@@ -274,7 +365,6 @@ function resolveImageUrl(image) {
 
 function showToast(message, type = 'success') {
     let container = document.getElementById('toastContainer');
-    // Ensure toast container is a direct child of body (above everything)
     if (!container) {
         container = document.createElement('div');
         container.id = 'toastContainer';
@@ -308,13 +398,12 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
 document.getElementById('cancelBtn').addEventListener('click', closeJobModal);
 document.getElementById('createJobBtn').addEventListener('click', createJob);
 
-// Wire gallery/file inputs
 document.getElementById('vehicleImageInput')?.addEventListener('change', handleVehicleImageSelect);
 document.getElementById('jobVehicleImageInput')?.addEventListener('change', handleJobImageSelect);
 
-// ---------- Live camera (works on desktop + phone) ----------
+// ---------- Live camera ----------
 let liveCameraStream = null;
-let liveCameraTarget = null; // 'vehicle' or 'job'
+let liveCameraTarget = null;
 
 async function openLiveCamera(target) {
     liveCameraTarget = target;
@@ -325,14 +414,12 @@ async function openLiveCamera(target) {
     errEl.textContent = '';
     modal.classList.add('active');
 
-    // Stop any previous stream
     if (liveCameraStream) {
         liveCameraStream.getTracks().forEach(t => t.stop());
         liveCameraStream = null;
     }
 
     try {
-        // Prefer back camera when available
         liveCameraStream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: { ideal: 'environment' } },
             audio: false
@@ -340,8 +427,6 @@ async function openLiveCamera(target) {
         video.srcObject = liveCameraStream;
         await video.play();
     } catch (err) {
-        console.error(err);
-        // Fallback: any camera
         try {
             liveCameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
             video.srcObject = liveCameraStream;
@@ -387,7 +472,6 @@ function captureLivePhoto() {
         const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
 
         if (liveCameraTarget === 'vehicle') {
-            // Feed into vehicle image flow
             vehicleImageFile = file;
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -423,7 +507,7 @@ function captureLivePhoto() {
     }, 'image/jpeg', 0.92);
 }
 
-// ---------- Vehicle image (Add New Vehicle modal) ----------
+// ---------- Vehicle image ----------
 function handleVehicleImageSelect(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
@@ -457,8 +541,6 @@ function removeVehicleImage() {
     vehicleImagePreviewDataUrl = null;
     const input = document.getElementById('vehicleImageInput');
     if (input) input.value = '';
-    const cameraInput = document.getElementById('vehicleImageCameraInput');
-    if (cameraInput) cameraInput.value = '';
     const previewImg = document.getElementById('vehiclePreviewImg');
     if (previewImg) previewImg.src = '';
     const preview = document.getElementById('vehicleImagePreview');
@@ -467,7 +549,7 @@ function removeVehicleImage() {
     if (placeholder) placeholder.style.display = 'block';
 }
 
-// ---------- Job form image (edit existing vehicle image) ----------
+// ---------- Job form image ----------
 function handleJobImageSelect(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
@@ -484,7 +566,6 @@ function handleJobImageSelect(event) {
 
     jobImageFile = file;
 
-    // Revoke previous object URL if any
     if (jobImagePreviewUrl && jobImagePreviewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(jobImagePreviewUrl);
     }
@@ -515,8 +596,6 @@ function removeJobImage() {
 
     const galleryInput = document.getElementById('jobVehicleImageInput');
     if (galleryInput) galleryInput.value = '';
-    const cameraInput = document.getElementById('jobVehicleCameraInput');
-    if (cameraInput) cameraInput.value = '';
     document.getElementById('vehicleImageContainer').innerHTML = `
         <div class="vehicle-placeholder">
             <span>Vehicle Image</span>
@@ -574,7 +653,7 @@ function openVehicleModal(registration = '') {
     const modal = document.getElementById('vehicleModal');
     modal.classList.add('active');
     document.getElementById('modalVehicleRegistration').value = decodeURIComponent(registration);
-    removeVehicleImage(); // reset image each time
+    removeVehicleImage();
     loadCustomersForModal();
 }
 
@@ -583,8 +662,6 @@ function closeVehicleModal(keepPreview = false) {
     if (!keepPreview) {
         removeVehicleImage();
     } else {
-        // Only clear the modal UI, keep vehicleImagePreviewDataUrl / vehicleImageFile
-        // for the job form (they will be cleared when job modal closes)
         const input = document.getElementById('vehicleImageInput');
         if (input) input.value = '';
         const preview = document.getElementById('vehicleImagePreview');
@@ -597,8 +674,7 @@ function closeVehicleModal(keepPreview = false) {
 }
 
 function openCustomerModal() {
-    const modal = document.getElementById('customerModal');
-    modal.classList.add('active');
+    document.getElementById('customerModal').classList.add('active');
 }
 
 function closeCustomerModal() {
@@ -612,8 +688,8 @@ function closeJobModal() {
     selectedCustomer = null;
     selectedVehicle = null;
     selectedServices = [];
+    selectedProducts = [];
 
-    // Clean up job image state
     if (jobImagePreviewUrl && jobImagePreviewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(jobImagePreviewUrl);
     }
@@ -621,6 +697,31 @@ function closeJobModal() {
     jobImagePreviewUrl = null;
     document.getElementById('jobVehicleImageInput').value = '';
     document.getElementById('removeJobImageBtn').style.display = 'none';
+
+    const productSearch = document.getElementById('productSearch');
+    if (productSearch) productSearch.value = '';
+
+    const selectedProductsList = document.getElementById('selectedProductsList');
+    if (selectedProductsList) selectedProductsList.innerHTML = '';
+
+    // Reset discount state so it doesn't carry over to the next job card
+    receptionDiscountType = 'none';
+    receptionDiscountValue = 0;
+    receptionDiscountApplyTo = 'total';
+
+    const discountType = document.getElementById('receptionDiscountType');
+    if (discountType) discountType.value = 'none';
+
+    const discountValue = document.getElementById('receptionDiscountValue');
+    if (discountValue) discountValue.value = 0;
+
+    const discountApplyTo = document.getElementById('receptionDiscountApplyTo');
+    if (discountApplyTo) discountApplyTo.value = 'total';
+
+    const discountOptions = document.getElementById('receptionDiscountOptions');
+    if (discountOptions) discountOptions.style.display = 'none';
+
+    calculateReceptionTotals();
 }
 
 async function loadCustomersForModal() {
@@ -659,7 +760,6 @@ async function createVehicleFromModal() {
     }
 
     try {
-        // Use FormData so we can send the image file
         const formData = new FormData();
         formData.append('customer_id', customerId);
         formData.append('registration_number', registration);
@@ -675,7 +775,6 @@ async function createVehicleFromModal() {
             headers: {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                // Do NOT set Content-Type — browser sets multipart/form-data with boundary
             },
             body: formData
         });
@@ -685,13 +784,11 @@ async function createVehicleFromModal() {
         if (response.ok) {
             showToast('Vehicle created successfully!', 'success');
 
-            // Prefer server URL, otherwise use the local preview we saved when picking the photo
             const imageForJob =
                 resolveImageUrl(data.image_url || data.image || null) ||
                 vehicleImagePreviewDataUrl ||
                 null;
 
-            // Capture customer name before closing modal (modal fields get cleared)
             const customerSelect = document.getElementById('modalVehicleCustomer');
             const customerName = customerSelect?.selectedOptions?.[0]?.text?.split(' - ')[0] || '';
 
@@ -707,14 +804,12 @@ async function createVehicleFromModal() {
             };
             selectedCustomer = { id: customerId, name: customerName };
 
-            // Clear modal UI but keep preview data for the job form
             closeVehicleModal(true);
 
             document.getElementById('searchResults').innerHTML = '';
             document.getElementById('searchInput').value = registration;
             showJobForm();
 
-            // Done with the create-vehicle preview
             vehicleImageFile = null;
             vehicleImagePreviewDataUrl = null;
         } else {
@@ -786,8 +881,7 @@ function selectVehicleDirect(vehicle) {
     };
 
     document.getElementById('searchResults').innerHTML = '';
-    document.getElementById('searchInput').value =
-        vehicle.registration_number ?? '';
+    document.getElementById('searchInput').value = vehicle.registration_number ?? '';
 
     showJobForm();
 }
@@ -846,7 +940,6 @@ function showJobForm() {
     document.getElementById('searchResults').innerHTML = '';
     document.getElementById('jobModal').classList.add('active');
 
-    // Reset job image edit state
     jobImageFile = null;
     jobImagePreviewUrl = resolveImageUrl(selectedVehicle?.image) || null;
 
@@ -909,12 +1002,16 @@ function showJobForm() {
     `;
 
     loadServices();
+    loadProducts();
+    calculateReceptionTotals();
 }
 
 async function loadServices() {
     const response = await fetch('/reception/services');
     const services = await response.json();
-    
+
+    receptionServices = services;
+
     const servicesList = document.getElementById('servicesList');
     servicesList.innerHTML = services.map(service => `
         <label class="service-item">
@@ -933,13 +1030,315 @@ async function loadServices() {
             } else {
                 selectedServices = selectedServices.filter(id => id !== e.target.value);
             }
+            calculateReceptionTotals();
         });
     });
 }
 
+let receptionProducts = [];
+
+async function loadProducts() {
+    try {
+        const response = await fetch('/reception/products');
+
+        if (!response.ok) {
+            throw new Error('Failed to load products');
+        }
+
+        receptionProducts = await response.json();
+        renderReceptionProducts(receptionProducts);
+
+    } catch (error) {
+        console.error('Error loading products:', error);
+
+        document.getElementById('productsList').innerHTML = `
+            <div class="empty-state">
+                Unable to load products.
+            </div>
+        `;
+    }
+}
+
+function renderReceptionProducts(products) {
+    const container = document.getElementById('productsList');
+
+    if (!products.length) {
+        container.innerHTML = `
+            <div class="empty-state">
+                No products available.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = products.map(product => {
+        const outOfStock = product.available_quantity <= 0;
+
+        return `
+            <div
+                class="product-item ${outOfStock ? 'product-out-of-stock' : ''}"
+                data-product-name="${(product.name || '').toLowerCase()}"
+                data-product-sku="${(product.sku || '').toLowerCase()}"
+                data-product-part="${(product.part_number || '').toLowerCase()}"
+            >
+                <div class="product-info">
+                    <span class="product-name">${product.name}</span>
+                    <span class="product-meta">
+                        ${product.sku ? `SKU: ${product.sku}` : ''}
+                        ${product.part_number ? ` · Part: ${product.part_number}` : ''}
+                    </span>
+                    <span class="product-stock">
+                        Stock: ${product.available_quantity} ${product.unit || ''}
+                    </span>
+                </div>
+
+                <div class="product-action">
+                    <span class="product-price">
+                        LKR ${Number(product.selling_price).toLocaleString()}
+                    </span>
+                    <button
+                        type="button"
+                        class="btn-secondary"
+                        ${outOfStock ? 'disabled' : ''}
+                        onclick="addReceptionProduct(${product.id})"
+                    >
+                        ${outOfStock ? 'Out of Stock' : 'Add'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function addReceptionProduct(productId) {
+    const product = receptionProducts.find(p => Number(p.id) === Number(productId));
+    if (!product) return;
+
+    const existing = selectedProducts.find(p => Number(p.product_id) === Number(productId));
+
+    if (existing) {
+        if (existing.quantity + 1 > product.available_quantity) {
+            showToast(`Only ${product.available_quantity} ${product.unit || ''} available`, 'error');
+            return;
+        }
+        existing.quantity += 1;
+    } else {
+        selectedProducts.push({
+            product_id: product.id,
+            name: product.name,
+            unit: product.unit,
+            unit_price: Number(product.selling_price),
+            available_quantity: Number(product.available_quantity),
+            quantity: 1
+        });
+    }
+
+    renderSelectedProducts();
+    calculateReceptionTotals();
+}
+
+function renderSelectedProducts() {
+    const container = document.getElementById('selectedProductsList');
+
+    if (!selectedProducts.length) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="selected-products-title">Selected Products</div>
+        ${selectedProducts.map((product, index) => `
+            <div class="selected-product-row">
+                <div class="selected-product-info">
+                    <strong>${product.name}</strong>
+                    <span>LKR ${product.unit_price.toLocaleString()} / ${product.unit || 'unit'}</span>
+                </div>
+                <div class="selected-product-quantity">
+                    <button type="button" onclick="changeReceptionProductQuantity(${index}, -1)">−</button>
+                    <span>${product.quantity}</span>
+                    <button type="button" onclick="changeReceptionProductQuantity(${index}, 1)">+</button>
+                </div>
+                <div class="selected-product-total">
+                    LKR ${(product.unit_price * product.quantity).toLocaleString()}
+                </div>
+                <button type="button" class="remove-product-btn" onclick="removeReceptionProduct(${index})">×</button>
+            </div>
+        `).join('')}
+    `;
+}
+
+function changeReceptionProductQuantity(index, change) {
+    const product = selectedProducts[index];
+    if (!product) return;
+
+    const newQuantity = product.quantity + change;
+
+    if (newQuantity < 1) {
+        removeReceptionProduct(index);
+        return;
+    }
+
+    if (newQuantity > product.available_quantity) {
+        showToast(`Only ${product.available_quantity} ${product.unit || ''} available`, 'error');
+        return;
+    }
+
+    product.quantity = newQuantity;
+    renderSelectedProducts();
+    calculateReceptionTotals();
+}
+
+function removeReceptionProduct(index) {
+    selectedProducts.splice(index, 1);
+    renderSelectedProducts();
+    calculateReceptionTotals();
+}
+
+function filterReceptionProducts() {
+    const query = (document.getElementById('productSearch')?.value || '').toLowerCase().trim();
+
+    if (!query) {
+        renderReceptionProducts(receptionProducts);
+        return;
+    }
+
+    const filtered = receptionProducts.filter(product => {
+        return (
+            (product.name || '').toLowerCase().includes(query) ||
+            (product.sku || '').toLowerCase().includes(query) ||
+            (product.part_number || '').toLowerCase().includes(query) ||
+            (product.barcode || '').toLowerCase().includes(query)
+        );
+    });
+
+    renderReceptionProducts(filtered);
+}
+
+// ===================== Bill Summary / Discount =====================
+
+function getReceptionServicesTotal() {
+    let total = 0;
+
+    selectedServices.forEach(serviceId => {
+        const service = receptionServices.find(
+            service => Number(service.id) === Number(serviceId)
+        );
+
+        if (!service) {
+            return;
+        }
+
+        total += Number(service.base_price || 0);
+    });
+
+    return total;
+}
+
+function getReceptionProductsTotal() {
+    let total = 0;
+
+    selectedProducts.forEach(product => {
+        total += Number(product.unit_price || 0) * Number(product.quantity || 0);
+    });
+
+    return total;
+}
+
+function calculateReceptionDiscountAmount(servicesTotal, productsTotal, subtotal) {
+    let discountBase = subtotal;
+
+    if (receptionDiscountApplyTo === 'services') {
+        discountBase = servicesTotal;
+    }
+
+    if (receptionDiscountApplyTo === 'parts') {
+        discountBase = productsTotal;
+    }
+
+    if (receptionDiscountType === 'amount') {
+        return Math.min(receptionDiscountValue, discountBase);
+    }
+
+    if (receptionDiscountType === 'percentage') {
+        const percentage = Math.min(receptionDiscountValue, 100);
+        return (discountBase * percentage) / 100;
+    }
+
+    return 0;
+}
+
+function formatReceptionMoney(value) {
+    return 'Rs. ' + Number(value || 0).toLocaleString('en-LK', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function calculateReceptionTotals() {
+    const servicesTotal = getReceptionServicesTotal();
+    const productsTotal = getReceptionProductsTotal();
+    const subtotal = servicesTotal + productsTotal;
+
+    const discountAmount = calculateReceptionDiscountAmount(
+        servicesTotal,
+        productsTotal,
+        subtotal
+    );
+
+    const grandTotal = Math.max(0, subtotal - discountAmount);
+
+    document.getElementById('receptionServicesTotal').textContent = formatReceptionMoney(servicesTotal);
+    document.getElementById('receptionProductsTotal').textContent = formatReceptionMoney(productsTotal);
+    document.getElementById('receptionSubtotal').textContent = formatReceptionMoney(subtotal);
+    document.getElementById('receptionDiscount').textContent = '- ' + formatReceptionMoney(discountAmount);
+    document.getElementById('receptionGrandTotal').textContent = formatReceptionMoney(grandTotal);
+}
+
+function handleReceptionDiscountTypeChange() {
+    const type = document.getElementById('receptionDiscountType').value;
+    const options = document.getElementById('receptionDiscountOptions');
+    const valueInput = document.getElementById('receptionDiscountValue');
+    const suffix = document.getElementById('receptionDiscountSuffix');
+
+    receptionDiscountType = type;
+
+    if (type === 'none') {
+        options.style.display = 'none';
+        valueInput.value = 0;
+        receptionDiscountValue = 0;
+        calculateReceptionTotals();
+        return;
+    }
+
+    options.style.display = 'block';
+
+    if (type === 'percentage') {
+        suffix.textContent = '%';
+        valueInput.max = '100';
+    } else {
+        suffix.textContent = 'Rs.';
+        valueInput.removeAttribute('max');
+    }
+
+    calculateReceptionDiscount();
+}
+
+function calculateReceptionDiscount() {
+    receptionDiscountType = document.getElementById('receptionDiscountType').value;
+    receptionDiscountValue = parseFloat(document.getElementById('receptionDiscountValue').value) || 0;
+    receptionDiscountApplyTo = document.getElementById('receptionDiscountApplyTo').value;
+
+    if (receptionDiscountType === 'percentage') {
+        receptionDiscountValue = Math.min(Math.max(receptionDiscountValue, 0), 100);
+    }
+
+    calculateReceptionTotals();
+}
+
 async function createJob() {
-    if (selectedServices.length === 0) {
-        showToast('Please select at least one service', 'error');
+    // Final rule: at least one service OR one product
+    if (selectedServices.length === 0 && selectedProducts.length === 0) {
+        showToast('Please select at least one service or product', 'error');
         return;
     }
 
@@ -948,11 +1347,17 @@ async function createJob() {
     createBtn.textContent = 'Creating Job...';
 
     try {
-        // Use FormData so we can optionally send a new image
         const formData = new FormData();
         formData.append('customer_id', selectedCustomer.id);
         formData.append('vehicle_id', selectedVehicle.vehicle_id);
+
         selectedServices.forEach(id => formData.append('service_ids[]', id));
+
+        selectedProducts.forEach((product, index) => {
+            formData.append(`product_items[${index}][product_id]`, product.product_id);
+            formData.append(`product_items[${index}][quantity]`, product.quantity);
+        });
+
         formData.append('notes', document.getElementById('jobNotes').value);
 
         if (jobImageFile) {
@@ -963,7 +1368,6 @@ async function createJob() {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                // Do NOT set Content-Type for FormData
             },
             body: formData
         });
@@ -988,8 +1392,7 @@ async function createJob() {
 }
 
 function toggleNav() {
-    const navMenu = document.getElementById('navMenu');
-    navMenu.classList.toggle('active');
+    document.getElementById('navMenu').classList.toggle('active');
 }
 
 document.addEventListener('click', (e) => {
@@ -1025,19 +1428,16 @@ document.addEventListener('click', (e) => {
 
 .reception-container {
     margin: 0;
-    padding: 40px 20px;
+    padding: 40px 16px;
     min-height: 100vh;
     width: 100%;
     max-width: none;
     box-sizing: border-box;
-
     background: var(--reception-background);
-
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
-
     position: relative;
     overflow-x: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1047,25 +1447,10 @@ document.addEventListener('click', (e) => {
     content: '';
     position: fixed;
     inset: 0;
-
     background:
-        radial-gradient(
-            circle at 15% 20%,
-            rgba(125, 211, 252, 0.10),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 85% 75%,
-            rgba(56, 189, 248, 0.08),
-            transparent 35%
-        ),
-        linear-gradient(
-            135deg,
-            rgba(3, 7, 18, 0.38) 0%,
-            rgba(8, 15, 30, 0.42) 50%,
-            rgba(4, 10, 22, 0.48) 100%
-        );
-
+        radial-gradient(circle at 15% 20%, rgba(125, 211, 252, 0.10), transparent 35%),
+        radial-gradient(circle at 85% 75%, rgba(56, 189, 248, 0.08), transparent 35%),
+        linear-gradient(135deg, rgba(3, 7, 18, 0.38) 0%, rgba(8, 15, 30, 0.42) 50%, rgba(4, 10, 22, 0.48) 100%);
     z-index: 0;
     pointer-events: none;
 }
@@ -1077,8 +1462,8 @@ document.addEventListener('click', (e) => {
 
 .reception-header {
     text-align: center;
-    margin-bottom: 44px;
-    padding: 36px 20px 0;
+    margin-bottom: 36px;
+    padding: 28px 12px 0;
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
@@ -1087,7 +1472,7 @@ document.addEventListener('click', (e) => {
 .reception-header h1 {
     color: var(--text);
     margin-bottom: 10px;
-    font-size: 44px;
+    font-size: clamp(26px, 6vw, 44px);
     font-weight: 700;
     letter-spacing: -0.5px;
     line-height: 1.2;
@@ -1095,15 +1480,15 @@ document.addEventListener('click', (e) => {
 
 .reception-header p {
     color: var(--text-dim);
-    font-size: 18px;
+    font-size: clamp(14px, 3.5vw, 18px);
     margin: 0;
     font-weight: 400;
 }
 
 .reception-nav {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 16px;
     z-index: 1000;
 }
 
@@ -1117,6 +1502,8 @@ document.addEventListener('click', (e) => {
     font-size: 22px;
     backdrop-filter: blur(10px);
     transition: background 0.2s ease;
+    min-width: 48px;
+    min-height: 48px;
 }
 
 .nav-toggle:hover {
@@ -1125,7 +1512,7 @@ document.addEventListener('click', (e) => {
 
 .nav-menu {
     position: absolute;
-    top: 52px;
+    top: 56px;
     right: 0;
     background: rgba(10, 16, 32, 0.96);
     border: 1px solid var(--panel-border);
@@ -1145,7 +1532,7 @@ document.addEventListener('click', (e) => {
     display: block;
     color: var(--text);
     text-decoration: none;
-    padding: 10px 14px;
+    padding: 12px 14px;
     border-radius: 7px;
     margin-bottom: 2px;
     font-size: 14px;
@@ -1183,15 +1570,11 @@ document.addEventListener('click', (e) => {
 
 .search-box input {
     width: 100%;
-    padding: 20px 22px;
+    padding: 18px 20px;
     border: 1px solid var(--panel-border);
     border-radius: 16px;
-    font-size: 18px;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.14),
-        rgba(255, 255, 255, 0.06)
-    );
+    font-size: 16px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
     color: var(--text);
     backdrop-filter: blur(24px) saturate(140%);
     -webkit-backdrop-filter: blur(24px) saturate(140%);
@@ -1215,7 +1598,7 @@ document.addEventListener('click', (e) => {
 
 .result-card {
     position: relative;
-    padding: 24px;
+    padding: 20px;
     border-radius: 18px;
     border: 1px solid var(--panel-border);
     border-left: 3px solid var(--accent);
@@ -1234,83 +1617,48 @@ document.addEventListener('click', (e) => {
 }
 
 .result-card h4 {
-    margin: 0 0 15px;
+    margin: 0 0 12px;
     color: #e0f2fe;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
 }
 
 .result-card p {
     margin: 8px 0;
     color: var(--text-dim);
+    font-size: 14px;
 }
 
 .result-card strong {
     color: #bae6fd;
 }
 
-.no-results {
-    padding: 20px;
-    text-align: center;
-    color: var(--text-dim);
-}
-
-.no-results a {
-    color: var(--accent);
-    text-decoration: underline;
-}
-
-.vehicles-list {
-    margin: 15px 0;
-}
-
-.vehicle-option {
-    margin-bottom: 10px;
-}
-
-.vehicle-btn {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 15px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.2s ease, color 0.2s ease;
-}
-
-.vehicle-btn:hover {
-    background: var(--accent);
-    color: #06263a;
-}
-
-.vehicle-btn strong {
-    font-size: 16px;
-}
-
 #toastContainer {
     position: fixed !important;
     top: 80px;
-    right: 20px;
-    z-index: 99999 !important; /* always above modals + blur overlay */
+    right: 16px;
+    left: 16px;
+    z-index: 99999 !important;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }
 
 .toast {
     pointer-events: auto;
     background: white;
-    padding: 16px 24px;
-    margin-bottom: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     border-left: 5px solid;
-    min-width: 320px;
+    max-width: 100%;
+    width: 100%;
+    max-width: 360px;
     transition: opacity 0.3s ease;
     animation: slideIn 0.25s ease;
+    font-size: 14px;
 }
 
 @keyframes slideIn {
@@ -1330,7 +1678,7 @@ document.addEventListener('click', (e) => {
     color: #721c24;
 }
 
-/* ---------- Image upload styles ---------- */
+/* Image upload */
 .image-upload-area {
     border: 1px dashed rgba(186, 230, 253, 0.35);
     border-radius: 14px;
@@ -1364,7 +1712,7 @@ document.addEventListener('click', (e) => {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
     color: white;
     border: none;
-    padding: 10px 18px;
+    padding: 10px 16px;
     border-radius: 10px;
     cursor: pointer;
     font-size: 14px;
@@ -1430,7 +1778,7 @@ document.addEventListener('click', (e) => {
 .job-image-actions {
     display: flex;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
     margin-top: 12px;
     flex-wrap: wrap;
 }
@@ -1442,7 +1790,7 @@ document.addEventListener('click', (e) => {
     background: rgba(255, 255, 255, 0.12);
     color: var(--text);
     border: 1px solid rgba(186, 230, 253, 0.3);
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: 10px;
     cursor: pointer;
     font-size: 13px;
@@ -1458,7 +1806,7 @@ document.addEventListener('click', (e) => {
     background: rgba(239, 68, 68, 0.2);
     color: #fca5a5;
     border: 1px solid rgba(248, 113, 113, 0.4);
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: 10px;
     cursor: pointer;
     font-size: 13px;
@@ -1470,25 +1818,19 @@ document.addEventListener('click', (e) => {
 }
 
 .vehicle-image-section {
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     text-align: center;
 }
 
 .vehicle-image-container {
     width: 100%;
-    max-width: 400px;
+    max-width: 360px;
     margin: 0 auto;
     border-radius: 12px;
     overflow: hidden;
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
     border: 1px solid var(--panel-border);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
-}
-
-.vehicle-image-container:hover {
-    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.25);
-    border-color: rgba(125, 211, 252, 0.55);
 }
 
 .vehicle-image-container img {
@@ -1499,49 +1841,49 @@ document.addEventListener('click', (e) => {
 }
 
 .vehicle-placeholder {
-    padding: 40px 20px;
+    padding: 36px 16px;
     color: var(--accent);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 200px;
+    min-height: 160px;
 }
 
 .info-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 25px;
+    gap: 16px;
+    margin-bottom: 20px;
 }
 
-.customer-info, .vehicle-info, .services-section, .notes-section {
-    margin-bottom: 25px;
+.customer-info, .vehicle-info, .services-section, .notes-section, .products-section {
+    margin-bottom: 20px;
 }
 
 .info-row .customer-info, .info-row .vehicle-info {
     margin-bottom: 0;
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
     border: 1px solid rgba(186, 230, 253, 0.16);
-    border-radius: 16px;
-    padding: 20px;
+    border-radius: 14px;
+    padding: 16px;
 }
 
-.customer-info h3, .vehicle-info h3, .services-section h3, .notes-section h3 {
+.customer-info h3, .vehicle-info h3, .services-section h3, .notes-section h3, .products-section h3 {
     color: #e0f2fe;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     border-bottom: 1px solid rgba(186, 230, 253, 0.16);
-    padding-bottom: 10px;
-    font-size: 17px;
+    padding-bottom: 8px;
+    font-size: 16px;
     font-weight: 700;
 }
 
 .customer-info p, .vehicle-info p {
-    margin: 10px 0;
+    margin: 8px 0;
     color: var(--text-dim);
-    font-size: 16px;
-    line-height: 1.6;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .customer-info strong, .vehicle-info strong {
@@ -1551,17 +1893,17 @@ document.addEventListener('click', (e) => {
 
 .services-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
 }
 
 .service-item {
     display: flex;
     align-items: center;
-    padding: 16px;
+    padding: 14px;
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
     border: 1px solid rgba(186, 230, 253, 0.14);
-    border-radius: 14px;
+    border-radius: 12px;
     cursor: pointer;
     transition: background 0.2s ease, border-color 0.2s ease;
 }
@@ -1572,9 +1914,9 @@ document.addEventListener('click', (e) => {
 }
 
 .service-item input {
-    margin-right: 15px;
-    width: 22px;
-    height: 22px;
+    margin-right: 12px;
+    width: 20px;
+    height: 20px;
     accent-color: var(--accent);
     flex-shrink: 0;
 }
@@ -1584,35 +1926,211 @@ document.addEventListener('click', (e) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
 }
 
 .service-name {
     font-weight: 500;
     color: var(--text);
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .service-price {
     color: var(--accent);
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+/* Products section */
+.product-search-wrapper {
+    margin-bottom: 12px;
+}
+
+.product-search-wrapper input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid rgba(186, 230, 253, 0.25);
+    border-radius: 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
+    backdrop-filter: blur(14px);
+}
+
+.product-search-wrapper input::placeholder {
+    color: rgba(186, 230, 253, 0.55);
+}
+
+.product-search-wrapper input:focus {
+    outline: none;
+    border-color: rgba(125, 211, 252, 0.75);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(186, 230, 253, 0.14);
+    border-radius: 12px;
+}
+
+.product-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+}
+
+.product-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.product-meta, .product-stock {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.product-stock {
+    color: rgba(125, 211, 252, 0.85);
+}
+
+.product-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.product-price {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.product-out-of-stock {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.selected-products-list {
+    margin-top: 14px;
+}
+
+.selected-products-title {
+    font-weight: 700;
+    color: #e0f2fe;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.selected-product-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(186, 230, 253, 0.16);
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.selected-product-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.selected-product-info strong {
+    color: var(--text);
+    font-size: 13px;
+}
+
+.selected-product-info span {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.selected-product-quantity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.selected-product-quantity button {
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(186, 230, 253, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.selected-product-quantity span {
+    min-width: 22px;
+    text-align: center;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.selected-product-total {
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+    font-size: 13px;
+}
+
+.remove-product-btn {
+    border: none;
+    background: transparent;
+    color: #f87171;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.empty-state {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 14px;
+    text-align: center;
 }
 
 .notes-section textarea {
     width: 100%;
     box-sizing: border-box;
-    padding: 14px 16px;
+    padding: 12px 14px;
     border: 1px solid rgba(186, 230, 253, 0.25);
-    border-radius: 14px;
-    font-size: 15px;
-    line-height: 1.6;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
     color: var(--text);
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     resize: vertical;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     font-family: inherit;
 }
 
@@ -1626,6 +2144,87 @@ document.addEventListener('click', (e) => {
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
 }
 
+/* ===================== DISCOUNT + BILL SUMMARY ===================== */
+
+.discount-section {
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(186, 230, 253, 0.16);
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.discount-section .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.discount-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.discount-input-wrapper input {
+    flex: 1;
+}
+
+.discount-input-wrapper span {
+    flex-shrink: 0;
+    min-width: 36px;
+    text-align: center;
+    padding: 12px 10px;
+    border: 1px solid rgba(186, 230, 253, 0.25);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.18), rgba(59, 130, 246, 0.10));
+    color: #bae6fd;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.reception-summary {
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    border: 1px solid rgba(186, 230, 253, 0.16);
+    border-radius: 14px;
+    padding: 16px 18px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+.summary-row strong {
+    color: #e0f2fe;
+    font-weight: 600;
+}
+
+.summary-divider {
+    height: 1px;
+    margin: 8px 0;
+    background: rgba(186, 230, 253, 0.16);
+}
+
+.summary-row.total-row {
+    padding-top: 4px;
+    font-size: 16px;
+}
+
+.summary-row.total-row span {
+    color: #e0f2fe;
+    font-weight: 700;
+}
+
+.summary-row.total-row strong {
+    color: #7dd3fc;
+    font-size: 18px;
+    font-weight: 800;
+}
+
 #createJobBtn {
     flex: 1;
 }
@@ -1634,10 +2233,10 @@ document.addEventListener('click', (e) => {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
     color: white;
     border: none;
-    padding: 12px 24px;
+    padding: 12px 20px;
     border-radius: 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
@@ -1648,46 +2247,21 @@ document.addEventListener('click', (e) => {
     box-shadow: 0 8px 22px rgba(37, 99, 235, 0.5);
 }
 
-.result-card .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
 .btn-secondary {
     background: rgba(255, 255, 255, 0.10);
     color: white;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 12px 24px;
+    padding: 12px 20px;
     border-radius: 10px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     transition: background 0.2s ease, border-color 0.2s ease;
-    backdrop-filter: blur(10px);
 }
 
 .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.18);
     border-color: rgba(255, 255, 255, 0.5);
-}
-
-.no-results-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.no-results-actions a {
-    text-decoration: none;
-    padding: 10px 20px;
-    border-radius: 6px;
-    display: inline-block;
-}
-
-.hidden {
-    display: none;
 }
 
 .modal {
@@ -1702,7 +2276,7 @@ document.addEventListener('click', (e) => {
     z-index: 10000;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 12px;
 }
 
 .modal.active {
@@ -1711,43 +2285,21 @@ document.addEventListener('click', (e) => {
 
 .modal-content {
     position: relative;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.16),
-        rgba(255, 255, 255, 0.07)
-    );
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07));
     border: 1px solid var(--panel-border);
-    border-radius: 20px;
-    width: 90%;
+    border-radius: 18px;
+    width: 100%;
     max-width: 500px;
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
     backdrop-filter: blur(30px) saturate(145%);
     -webkit-backdrop-filter: blur(30px) saturate(145%);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 50px rgba(14, 165, 233, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
     animation: modalGlassIn 0.3s cubic-bezier(.2,.8,.2,1);
 }
 
 .job-modal-content {
     max-width: 960px;
-    --job-accent: #7dd3fc;
-    --job-accent-deep: #38bdf8;
-    --job-panel-border: rgba(186, 230, 253, 0.30);
-    --job-text-warm: #e6f6ff;
-}
-
-.job-modal-content .modal-header {
-    background: linear-gradient(135deg, rgba(125, 211, 252, 0.20), rgba(56, 189, 248, 0.12));
-    border-bottom: 1px solid var(--job-panel-border);
-}
-
-.job-modal-content .modal-header h3 {
-    color: var(--job-text-warm);
-}
-
-.job-modal-content .modal-footer {
-    background: linear-gradient(135deg, rgba(125, 211, 252, 0.16), rgba(56, 189, 248, 0.09));
-    border-top: 1px solid var(--job-panel-border);
 }
 
 @keyframes modalGlassIn {
@@ -1759,15 +2311,18 @@ document.addEventListener('click', (e) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 22px 24px;
+    padding: 16px 18px;
     border-bottom: 1px solid rgba(186, 230, 253, 0.16);
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.10), rgba(59, 130, 246, 0.05));
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 
 .modal-header h3 {
     margin: 0;
     color: #e0f2fe;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
 }
 
@@ -1784,54 +2339,49 @@ document.addEventListener('click', (e) => {
     cursor: pointer;
     color: rgba(224, 242, 254, 0.75);
     line-height: 1;
-    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .modal-close:hover {
     color: #ffffff;
     background: rgba(239, 68, 68, 0.18);
-    border-color: rgba(248, 113, 113, 0.40);
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 16px;
 }
 
 .modal-footer {
     display: flex;
     gap: 10px;
-    padding: 20px 24px;
+    padding: 16px 18px;
     border-top: 1px solid rgba(186, 230, 253, 0.14);
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.07), rgba(59, 130, 246, 0.04));
+    position: sticky;
+    bottom: 0;
 }
 
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 14px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     font-weight: 600;
     color: #bae6fd;
     font-size: 13px;
-    letter-spacing: 0.2px;
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
     box-sizing: border-box;
-    padding: 13px 14px;
+    padding: 12px 14px;
     border: 1px solid rgba(186, 230, 253, 0.25);
     border-radius: 12px;
     font-size: 14px;
     color: var(--text);
     background: linear-gradient(135deg, rgba(125, 211, 252, 0.12), rgba(59, 130, 246, 0.07));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-group input::placeholder {
@@ -1845,8 +2395,7 @@ document.addEventListener('click', (e) => {
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
 }
 
-.form-group select option,
-.customer-select-wrapper select option {
+.form-group select option {
     background-color: #0b1224;
     color: var(--text);
 }
@@ -1865,187 +2414,151 @@ document.addEventListener('click', (e) => {
     background: linear-gradient(135deg, rgba(56, 189, 248, 0.75), rgba(37, 99, 235, 0.75));
     color: #ffffff;
     border: 1px solid rgba(186, 230, 253, 0.35);
-    padding: 11px 16px;
+    padding: 11px 14px;
     border-radius: 11px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
-    backdrop-filter: blur(10px);
-    transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.btn-add-customer:hover {
-    transform: translateY(-1px);
-    background: linear-gradient(135deg, rgba(125, 211, 252, 0.9), rgba(37, 99, 235, 0.9));
-}
+/* ===================== RESPONSIVE ===================== */
 
-.job-modal-content .info-row .customer-info,
-.job-modal-content .info-row .vehicle-info {
-    background: linear-gradient(135deg, rgba(186, 230, 253, 0.18), rgba(125, 211, 252, 0.08));
-    border: 1px solid var(--job-panel-border);
-}
-
-.job-modal-content .customer-info h3,
-.job-modal-content .vehicle-info h3,
-.job-modal-content .services-section h3,
-.job-modal-content .notes-section h3 {
-    color: var(--job-text-warm);
-    border-bottom: 1px solid var(--job-panel-border);
-}
-
-.job-modal-content .customer-info strong,
-.job-modal-content .vehicle-info strong {
-    color: var(--job-accent);
-}
-
-.job-modal-content .vehicle-image-container {
-    background: linear-gradient(135deg, rgba(186, 230, 253, 0.20), rgba(125, 211, 252, 0.10));
-    border: 1px solid var(--job-panel-border);
-}
-
-.job-modal-content .vehicle-image-container:hover {
-    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.28);
-    border-color: rgba(186, 230, 253, 0.6);
-}
-
-.job-modal-content .vehicle-placeholder {
-    color: var(--job-accent);
-}
-
-.job-modal-content .service-item {
-    background: linear-gradient(135deg, rgba(186, 230, 253, 0.18), rgba(125, 211, 252, 0.08));
-    border: 1px solid rgba(186, 230, 253, 0.20);
-}
-
-.job-modal-content .service-item:hover {
-    background: rgba(125, 211, 252, 0.20);
-    border-color: rgba(186, 230, 253, 0.5);
-}
-
-.job-modal-content .service-item input {
-    accent-color: var(--job-accent);
-}
-
-.job-modal-content .service-price {
-    color: var(--job-accent-deep);
-}
-
-.job-modal-content .notes-section textarea {
-    border: 1px solid rgba(186, 230, 253, 0.30);
-    background: linear-gradient(135deg, rgba(186, 230, 253, 0.16), rgba(125, 211, 252, 0.08));
-}
-
-.job-modal-content .notes-section textarea:focus {
-    border-color: rgba(125, 211, 252, 0.8);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
-}
-
-.job-modal-content #createJobBtn {
-    background: linear-gradient(135deg, var(--job-accent) 0%, var(--job-accent-deep) 100%);
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.35);
-}
-
-.job-modal-content #createJobBtn:hover {
-    box-shadow: 0 8px 22px rgba(56, 189, 248, 0.5);
+@media (max-width: 1024px) {
+    .job-modal-content {
+        max-width: 90%;
+    }
 }
 
 @media (max-width: 768px) {
-    .reception-header h1 { font-size: 32px; }
-    .reception-header p { font-size: 15px; }
-    .search-box input { padding: 15px; font-size: 16px; }
-    .result-card { padding: 20px; }
-    .result-card h4 { font-size: 16px; }
-    .result-card p { font-size: 14px; }
-    .btn-primary, .btn-secondary { padding: 10px 20px; font-size: 14px; }
-    .nav-toggle { padding: 10px 14px; font-size: 20px; }
-    .nav-menu { min-width: 180px; padding: 10px; }
-    .nav-menu a { padding: 8px 12px; font-size: 14px; }
+    .reception-container {
+        padding: 24px 12px;
+    }
 
-    .info-row { grid-template-columns: 1fr; gap: 15px; }
+    .info-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 
-    .modal-content { width: 95%; max-width: 450px; overflow-x: hidden; }
-    .job-modal-content { max-width: 680px; }
-    .modal-header h3 { font-size: 18px; }
-    .modal-body { padding: 15px; overflow-x: hidden; }
-    .form-group label { font-size: 14px; }
-    .form-group input, .form-group select { padding: 10px; font-size: 14px; }
-    .modal-footer { padding: 15px; }
-    .modal-footer button { padding: 10px 16px; font-size: 14px; flex: 1; }
-    .customer-select-wrapper { flex-direction: column; align-items: stretch; gap: 10px; }
-    .btn-add-customer { margin-top: 10px; width: 100%; }
+    .products-grid {
+        grid-template-columns: 1fr;
+        max-height: 220px;
+    }
+
+    .selected-product-row {
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+
+    .selected-product-total {
+        grid-column: 1;
+    }
+
+    .services-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        max-width: 100%;
+        border-radius: 16px;
+    }
+
+    .job-modal-content {
+        max-width: 100%;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .modal-footer button {
+        width: 100%;
+    }
+
+    .customer-select-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-add-customer {
+        width: 100%;
+    }
 }
 
 @media (max-width: 480px) {
-    .reception-header h1 { font-size: 26px; }
-    .reception-header p { font-size: 13px; }
-    .search-box input { padding: 12px; font-size: 14px; }
-    .result-card { padding: 16px; }
-    .result-card h4 { font-size: 15px; }
-    .result-card p { font-size: 13px; }
-    .btn-primary, .btn-secondary { padding: 9px 16px; font-size: 13px; }
-    .nav-toggle { padding: 8px 12px; font-size: 18px; }
-    .nav-menu { min-width: 160px; padding: 8px; }
-    .nav-menu a { padding: 7px 10px; font-size: 13px; }
-
-    .vehicle-image-container { max-width: 220px; margin: 0 auto; border-radius: 10px; }
-    .vehicle-placeholder { padding: 24px 10px; font-size: 12px; min-height: 110px; }
-
-    .info-row { grid-template-columns: 1fr; gap: 10px; }
-
-    .customer-info, .vehicle-info, .services-section, .notes-section {
-        margin-bottom: 14px;
+    .reception-header {
+        padding-top: 20px;
+        margin-bottom: 24px;
     }
 
-    .info-row .customer-info, .info-row .vehicle-info {
-        background: linear-gradient(135deg, rgba(125, 211, 252, 0.09), rgba(59, 130, 246, 0.05));
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid rgba(186, 230, 253, 0.16);
+    .search-box input {
+        padding: 15px 16px;
+        font-size: 15px;
+        border-radius: 14px;
     }
 
-    .services-section, .notes-section {
-        background: linear-gradient(135deg, rgba(125, 211, 252, 0.09), rgba(59, 130, 246, 0.05));
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid rgba(186, 230, 253, 0.16);
+    .result-card {
+        padding: 16px;
     }
 
-    .customer-info h3, .vehicle-info h3, .services-section h3, .notes-section h3 {
+    .vehicle-image-container {
+        max-width: 100%;
+    }
+
+    .vehicle-placeholder {
+        min-height: 120px;
+        padding: 24px 12px;
         font-size: 13px;
-        margin-bottom: 10px;
-        padding-bottom: 8px;
-        color: #e0f2fe;
-        border-bottom: 1px solid rgba(56, 189, 248, 0.4);
-        font-weight: 700;
     }
 
-    .customer-info p, .vehicle-info p { font-size: 13px; margin: 5px 0; }
-    .customer-info strong, .vehicle-info strong { font-size: 13px; font-weight: 700; }
+    .modal-header h3 {
+        font-size: 16px;
+    }
 
-    .services-grid { grid-template-columns: 1fr; gap: 8px; }
-    .service-item { padding: 10px; }
-    .service-name { font-size: 13px; }
-    .service-price { font-size: 13px; }
+    .modal-body {
+        padding: 14px;
+    }
 
-    .notes-section textarea { padding: 8px; font-size: 13px; min-height: 60px; }
-    .btn-primary { padding: 10px 16px; font-size: 13px; }
+    .product-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
 
-    .modal-content { width: 95%; max-width: 340px; overflow-x: hidden; }
-    .job-modal-content { max-width: 400px; }
-    .modal-header h3 { font-size: 16px; }
-    .modal-body { padding: 12px; overflow-x: hidden; }
-    .form-group { margin-bottom: 10px; }
-    .form-group label { font-size: 12px; }
-    .form-group input, .form-group select { padding: 8px; font-size: 12px; }
-    .modal-footer { padding: 12px; flex-direction: column; gap: 8px; }
-    .modal-footer button { padding: 10px; font-size: 13px; width: 100%; }
-    .customer-select-wrapper { flex-direction: column; align-items: stretch; gap: 8px; }
-    .btn-add-customer { margin-top: 8px; padding: 10px; font-size: 13px; width: 100%; }
+    .product-action {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    .nav-toggle {
+        padding: 10px 12px;
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 360px) {
+    .reception-container {
+        padding: 16px 10px;
+    }
+
+    .selected-product-quantity button {
+        width: 28px;
+        height: 28px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 </style>
 @endsection
