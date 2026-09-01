@@ -457,10 +457,10 @@
 
             aside.sidebar {
                 position: fixed !important;
-                left: -260px !important;
+                left: -240px !important;
                 top: 0 !important;
                 height: 100vh !important;
-                width: 260px !important;
+                width: 240px !important;
                 z-index: 1000 !important;
                 transition: left 0.3s ease !important;
                 background: #0a1f33 !important;
@@ -472,14 +472,14 @@
             }
 
             aside.sidebar nav a {
-                padding: 9px 14px !important;
-                font-size: 14px !important;
-                gap: 9px !important;
+                padding: 7px 12px !important;
+                font-size: 13px !important;
+                gap: 8px !important;
             }
 
             aside.sidebar nav a svg {
-                width: 17px !important;
-                height: 17px !important;
+                width: 15px !important;
+                height: 15px !important;
             }
 
             .main {
@@ -502,10 +502,10 @@
 
             aside.sidebar {
                 position: fixed !important;
-                left: -250px !important;
+                left: -230px !important;
                 top: 0 !important;
                 height: 100vh !important;
-                width: 250px !important;
+                width: 230px !important;
                 z-index: 1000 !important;
                 transition: left 0.3s ease !important;
                 background: #0a1f33 !important;
@@ -517,14 +517,14 @@
             }
 
             aside.sidebar nav a {
-                padding: 9px 13px !important;
-                font-size: 14px !important;
-                gap: 9px !important;
+                padding: 7px 11px !important;
+                font-size: 13px !important;
+                gap: 8px !important;
             }
 
             aside.sidebar nav a svg {
-                width: 17px !important;
-                height: 17px !important;
+                width: 15px !important;
+                height: 15px !important;
             }
 
             .main {
@@ -538,24 +538,29 @@
 
         @media (max-width: 480px) {
             aside.sidebar {
-                width: 240px !important;
-                left: -240px !important;
+                width: 220px !important;
+                left: -220px !important;
             }
 
             aside.sidebar nav a {
-                padding: 8px 12px !important;
-                font-size: 13px !important;
-                gap: 8px !important;
+                padding: 6px 10px !important;
+                font-size: 12px !important;
+                gap: 7px !important;
             }
 
             aside.sidebar nav a svg {
-                width: 16px !important;
-                height: 16px !important;
+                width: 14px !important;
+                height: 14px !important;
             }
 
             .sidebar-toggle {
                 width: 24px;
                 height: 24px;
+            }
+            
+            .sidebar-toggle svg {
+                width: 16px;
+                height: 16px;
             }
         }
 

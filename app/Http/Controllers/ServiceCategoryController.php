@@ -14,6 +14,7 @@ class ServiceCategoryController extends Controller
                 'name' => 'required|string|max:255|unique:service_categories,name',
             ]);
 
+            $validated['business_id'] = auth()->user()->business_id;
             $validated['active'] = $request->has('active');
 
             $category = ServiceCategory::create($validated);

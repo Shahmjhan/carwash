@@ -15,6 +15,8 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ReceptionController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ServiceCategoryController;
 
 Route::get('/', function(){
     if(!auth()->check()) return redirect()->route('login');
@@ -68,6 +70,11 @@ Route::middleware('auth')->group(function(){
  Route::post('/cashier/payment/{job}',[CashierController::class,'processPayment'])->name('cashier.process-payment')->middleware('permission:payment_cashier');
  Route::get('/cashier/print-options/{job}',[CashierController::class,'printOptions'])->name('cashier.print-options')->middleware('permission:print_options_cashier');
  Route::get('/reports',[ReportController::class,'index'])->name('reports')->middleware('permission:view_reports');
+ Route::get('/reports/sales',[ReportController::class,'salesReport'])->name('reports.sales')->middleware('permission:view_reports');
+ Route::get('/reports/stock',[ReportController::class,'stockReport'])->name('reports.stock')->middleware('permission:view_reports');
+ Route::get('/reports/stock-movement',[ReportController::class,'stockMovementReport'])->name('reports.stock-movement')->middleware('permission:view_reports');
+ Route::get('/reports/services',[ReportController::class,'serviceReport'])->name('reports.services')->middleware('permission:view_reports');
+ Route::get('/reports/customers',[ReportController::class,'customerReport'])->name('reports.customers')->middleware('permission:view_reports');
  Route::get('/settings/billing',[SettingsController::class,'billing'])->name('settings.billing')->middleware('permission:view_settings');
  Route::get('/settings/reception',function(){return redirect()->route('settings.billing');})->name('settings.reception');
  Route::post('/settings/billing',[SettingsController::class,'updateBilling'])->name('settings.billing.update')->middleware('permission:edit_billing_settings');

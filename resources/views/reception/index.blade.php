@@ -1199,6 +1199,24 @@ document.addEventListener('click', (e) => {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
+@media (max-width: 768px) {
+    .search-box input {
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+}
+
+@media (max-width: 480px) {
+    .search-box input {
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+}
+
 .search-box input::placeholder {
     color: rgba(255, 255, 255, 0.55);
 }
