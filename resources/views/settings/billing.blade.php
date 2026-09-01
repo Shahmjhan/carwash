@@ -125,14 +125,14 @@
                         </div>
                         <div class="search-section">
                             <div class="search-box">
-                                <input type="text" placeholder="Vehicle registration number..." disabled>
+                                <span class="search-placeholder">Vehicle registration number...</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div style="margin-top: 40px;">
+            <div class="form-actions">
                 <button class="primary">Save Reception Settings</button>
             </div>
         </form>
@@ -141,7 +141,7 @@
 
 <!-- Billing Settings Tab -->
 <div class="tab-content" id="content-billing">
-    <div class="grid2">
+    <div class="billing-grid">
         <div class="panel">
             <form method="post" action="{{ route('settings.billing.update') }}" enctype="multipart/form-data" id="billing-form">
                 @csrf
@@ -243,103 +243,25 @@
                 </div>
                 <input type="hidden" name="logo_path" value="{{ $settings['logo_path'] }}" id="logo-path-hidden">
                 
-                <label style="margin-top: 15px;">
+                <label class="range-label">
                     Logo Size (A4 Invoice)
-                    <input type="range" name="logo_size_a4" min="30" max="150" value="{{ $settings['logo_size_a4'] ?? 60 }}" id="logo-size-a4" style="width: 100%;">
+                    <input type="range" name="logo_size_a4" min="30" max="150" value="{{ $settings['logo_size_a4'] ?? 60 }}" id="logo-size-a4">
                     <small>Current: <span id="logo-size-a4-value">{{ $settings['logo_size_a4'] ?? 60 }}</span>px</small>
                 </label>
                 
-                <label>
+                <label class="range-label">
                     Logo Size (Thermal Receipt)
-                    <input type="range" name="logo_size_thermal" min="20" max="80" value="{{ $settings['logo_size_thermal'] ?? 40 }}" id="logo-size-thermal" style="width: 100%;">
+                    <input type="range" name="logo_size_thermal" min="20" max="80" value="{{ $settings['logo_size_thermal'] ?? 40 }}" id="logo-size-thermal">
                     <small>Current: <span id="logo-size-thermal-value">{{ $settings['logo_size_thermal'] ?? 40 }}</span>px</small>
                 </label>
 
-                <script>
-                    // Logo dropzone
-                    const dropzone = document.getElementById('logo-dropzone');
-                    const fileInput = document.getElementById('logo-input');
-                    const logoPathHidden = document.getElementById('logo-path-hidden');
-
-                    dropzone.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                        dropzone.style.borderColor = '#3498db';
-                        dropzone.style.backgroundColor = '#f0f8ff';
-                    });
-
-                    dropzone.addEventListener('dragleave', (e) => {
-                        e.preventDefault();
-                        dropzone.style.borderColor = '#ccc';
-                        dropzone.style.backgroundColor = 'transparent';
-                    });
-
-                    dropzone.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        dropzone.style.borderColor = '#ccc';
-                        dropzone.style.backgroundColor = 'transparent';
-                        
-                        const files = e.dataTransfer.files;
-                        if (files.length > 0) {
-                            fileInput.files = files;
-                            previewImage(files[0], dropzone);
-                            updateLogoPreview(files[0]);
-                        }
-                    });
-
-                    fileInput.addEventListener('change', (e) => {
-                        if (e.target.files.length > 0) {
-                            previewImage(e.target.files[0], dropzone);
-                            updateLogoPreview(e.target.files[0]);
-                        }
-                    });
-
-                    function removeLogo() {
-                        logoPathHidden.value = '';
-                        fileInput.value = '';
-                        const img = dropzone.querySelector('img');
-                        if (img) img.remove();
-                        const removeBtn = dropzone.querySelector('button');
-                        if (removeBtn) removeBtn.remove();
-                        
-                        document.querySelectorAll('.preview-logo').forEach(el => el.style.display = 'none');
-                    }
-
-                    function previewImage(file, dropzone) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            const img = dropzone.querySelector('img');
-                            if (img) {
-                                img.src = e.target.result;
-                            } else {
-                                const newImg = document.createElement('img');
-                                newImg.src = e.target.result;
-                                newImg.style.maxHeight = '100px';
-                                newImg.style.marginBottom = '10px';
-                                dropzone.insertBefore(newImg, dropzone.firstChild);
-                            }
-                        };
-                        reader.readAsDataURL(file);
-                    }
-
-                    function updateLogoPreview(file) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            document.querySelectorAll('.preview-logo').forEach(el => {
-                                el.src = e.target.result;
-                                el.style.display = 'block';
-                            });
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                </script>
-
-                <div style="margin-top: 40px;">
+                <div class="form-actions">
                     <button class="primary">Save Billing Settings</button>
                 </div>
             </form>
         </div>
 
-        <div class="panel">
+        <div class="panel preview-panel">
             <h2>👁️ Live Preview</h2>
             <div class="preview-toggle">
                 <button type="button" onclick="showPreview('a4')" id="btn-a4" class="secondary">A4 Format</button>
@@ -348,177 +270,150 @@
 
             <!-- A4 Preview -->
             <div id="preview-a4" class="preview-container" style="display: {{ $settings['default_format'] === 'a4' ? 'block' : 'none' }};">
-                <div style="background: white; padding: 20px; border: 1px solid #ddd; max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; font-size: 12px; color: #333;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;">
-                        <div style="flex: 1;">
+                <div class="invoice-preview a4-preview">
+                    <div class="invoice-header">
+                        <div class="invoice-left">
                             @if($settings['logo_path'])
-                                <img src="{{ asset($settings['logo_path']) }}" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_a4'] ?? 60 }}px; margin-bottom: 10px;">
+                                <img src="{{ asset($settings['logo_path']) }}" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_a4'] ?? 60 }}px;">
                             @else
-                                <img src="" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_a4'] ?? 60 }}px; margin-bottom: 10px; display: none;">
+                                <img src="" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_a4'] ?? 60 }}px; display: none;">
                             @endif
-                            <h1 style="font-size: 20px; margin: 0 0 8px 0; color: #2c3e50;" id="preview-company-name-a4">{{ $settings['company_name'] }}</h1>
-                            @if($settings['address'])<p style="margin: 3px 0; color: #666; font-size: 11px;" id="preview-address-a4">{{ $settings['address'] }}</p>@endif
-                            @if($settings['phone'])<p style="margin: 3px 0; color: #666; font-size: 11px;" id="preview-phone-a4">Phone: {{ $settings['phone'] }}</p>@endif
-                            @if($settings['email'])<p style="margin: 3px 0; color: #666; font-size: 11px;" id="preview-email-a4">Email: {{ $settings['email'] }}</p>@endif
-                            @if($settings['tax_id'])<p style="margin: 3px 0; color: #666; font-size: 11px;">Tax ID: {{ $settings['tax_id'] }}</p>@endif
+                            <h1 id="preview-company-name-a4">{{ $settings['company_name'] }}</h1>
+                            <p id="preview-address-a4">{{ $settings['address'] }}</p>
+                            <p id="preview-phone-a4">@if($settings['phone'])Phone: {{ $settings['phone'] }}@endif</p>
+                            <p id="preview-email-a4">@if($settings['email'])Email: {{ $settings['email'] }}@endif</p>
+                            @if($settings['tax_id'])<p>Tax ID: {{ $settings['tax_id'] }}</p>@endif
                         </div>
-                        <div style="text-align: right;">
-                            <h2 style="font-size: 18px; margin: 0 0 12px 0; color: #e74c3c;">INVOICE</h2>
-                            <p style="margin: 4px 0; font-size: 11px;"><strong>Invoice #:</strong> <span id="preview-invoice-prefix-a4">{{ $settings['invoice_prefix'] }}-001</span></p>
-                            <p style="margin: 4px 0; font-size: 11px;"><strong>Date:</strong> {{ now()->format('d M Y') }}</p>
-                            <p style="margin: 4px 0; font-size: 11px;"><strong>Due Date:</strong> {{ now()->addDays(30)->format('d M Y') }}</p>
-                            <p style="margin: 4px 0; font-size: 11px;"><strong>Status:</strong> <span style="color: green; font-weight: bold;">Paid</span></p>
+                        <div class="invoice-right">
+                            <h2>INVOICE</h2>
+                            <p><strong>Invoice #:</strong> <span id="preview-invoice-prefix-a4">{{ $settings['invoice_prefix'] }}-001</span></p>
+                            <p><strong>Date:</strong> {{ now()->format('d M Y') }}</p>
+                            <p><strong>Due Date:</strong> {{ now()->addDays(30)->format('d M Y') }}</p>
+                            <p><strong>Status:</strong> <span class="status-paid">Paid</span></p>
                         </div>
                     </div>
                     
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                        <div style="flex: 1;">
-                            <h3 style="font-size: 13px; margin: 0 0 8px 0; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 5px;">BILL TO</h3>
-                            <p style="margin: 4px 0; color: #666; font-size: 11px;"><strong>John Doe</strong></p>
-                            <p style="margin: 4px 0; color: #666; font-size: 11px;">Phone: 0771234567</p>
+                    <div class="invoice-parties">
+                        <div>
+                            <h3>BILL TO</h3>
+                            <p><strong>John Doe</strong></p>
+                            <p>Phone: 0771234567</p>
                         </div>
-                        <div style="flex: 1;">
-                            <h3 style="font-size: 13px; margin: 0 0 8px 0; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 5px;">VEHICLE DETAILS</h3>
-                            <p style="margin: 4px 0; color: #666; font-size: 11px;"><strong>ABC-1234</strong></p>
-                            <p style="margin: 4px 0; color: #666; font-size: 11px;">Toyota Corolla - White</p>
+                        <div>
+                            <h3>VEHICLE DETAILS</h3>
+                            <p><strong>ABC-1234</strong></p>
+                            <p>Toyota Corolla - White</p>
                         </div>
                     </div>
 
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px;">
+                    <table class="invoice-table">
                         <thead>
-                            <tr style="background: #f8f9fa;">
-                                <th style="border: 1px solid #ddd; padding: 8px; text-align: left; font-weight: bold; color: #2c3e50;">Description</th>
-                                <th style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; color: #2c3e50;">Qty</th>
-                                <th style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: bold; color: #2c3e50;">Unit Price</th>
-                                <th style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: bold; color: #2c3e50;">Tax</th>
-                                <th style="border: 1px solid #ddd; padding: 8px; text-align: right; font-weight: bold; color: #2c3e50;">Total</th>
+                            <tr>
+                                <th><span class="th-full">Description</span><span class="th-short">Item</span></th>
+                                <th>Qty</th>
+                                <th><span class="th-full">Unit Price</span><span class="th-short">Price</span></th>
+                                <th>Tax</th>
+                                <th>Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="background: #f9f9f9;">
-                                <td style="border: 1px solid #ddd; padding: 8px;">Full Car Wash Service</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">1</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">500.00</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">50.00</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">550.00</td>
+                            <tr>
+                                <td>Full Car Wash Service</td>
+                                <td>1</td>
+                                <td>500.00</td>
+                                <td>50.00</td>
+                                <td>550.00</td>
                             </tr>
                             <tr>
-                                <td style="border: 1px solid #ddd; padding: 8px;">Interior Detailing</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">1</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">300.00</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">30.00</td>
-                                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">330.00</td>
+                                <td>Interior Detailing</td>
+                                <td>1</td>
+                                <td>300.00</td>
+                                <td>30.00</td>
+                                <td>330.00</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div style="width: 250px; margin-left: auto;">
-                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 11px;">
-                            <span>Subtotal:</span>
-                            <span>800.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 11px;">
-                            <span>Tax:</span>
-                            <span>80.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 10px 0; border-top: 2px solid #333; border-bottom: none; margin-top: 8px; font-size: 13px; font-weight: bold; color: #2c3e50;">
-                            <span>Total Due:</span>
-                            <span>880.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 11px;">
-                            <span>Amount Received:</span>
-                            <span>880.00</span>
-                        </div>
+                    <div class="invoice-totals">
+                        <div class="total-row"><span>Subtotal:</span><span>800.00</span></div>
+                        <div class="total-row"><span>Tax:</span><span>80.00</span></div>
+                        <div class="total-row grand"><span>Total Due:</span><span>880.00</span></div>
+                        <div class="total-row"><span>Amount Received:</span><span>880.00</span></div>
                     </div>
 
                     @if($settings['terms_conditions'])
-                        <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 3px solid #e74c3c; font-size: 10px;">
+                        <div class="invoice-terms">
                             <strong>Terms & Conditions:</strong>
-                            <p style="margin: 4px 0;" id="preview-terms-a4">{{ $settings['terms_conditions'] }}</p>
+                            <p id="preview-terms-a4">{{ $settings['terms_conditions'] }}</p>
                         </div>
                     @endif
 
-                    <div style="margin-top: 15px; padding: 12px; background: #f0f8ff; border-left: 3px solid #3498db; font-size: 10px;">
+                    <div class="invoice-payment">
                         <strong>Payment Information:</strong>
-                        <p style="margin: 4px 0;">We accept Cash, Card, and Bank Transfer</p>
-                        @if($settings['phone'])<p style="margin: 4px 0;">For inquiries: {{ $settings['phone'] }}</p>@endif
+                        <p>We accept Cash, Card, and Bank Transfer</p>
+                        @if($settings['phone'])<p>For inquiries: {{ $settings['phone'] }}</p>@endif
                     </div>
 
-                    <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 10px;">
-                        <p style="margin: 4px 0;" id="preview-footer-a4">{{ $settings['footer_text'] }}</p>
-                        <p style="margin: 4px 0;">Generated on {{ now()->format('d M Y H:i') }} · {{ $settings['company_name'] }}</p>
-                        <p style="font-weight: bold; margin-top: 10px;">Powered by Vellix Global - 0773208478</p>
+                    <div class="invoice-footer">
+                        <p id="preview-footer-a4">{{ $settings['footer_text'] }}</p>
+                        <p>Generated on {{ now()->format('d M Y H:i') }} · {{ $settings['company_name'] }}</p>
+                        <p class="powered">Powered by Vellix Global - 0773208478</p>
                     </div>
                 </div>
             </div>
 
             <!-- Thermal Preview -->
             <div id="preview-thermal" class="preview-container" style="display: {{ $settings['default_format'] === 'thermal' ? 'block' : 'none' }};">
-                <div style="background: white; padding: 10px; border: 1px solid #ddd; max-width: 280px; margin: 0 auto; font-family: 'Courier New', monospace; font-size: 12px; font-weight: bold;">
-                    <div style="text-align: center; margin-bottom: 8px;">
+                <div class="invoice-preview thermal-preview">
+                    <div class="thermal-header">
                         @if($settings['logo_path'])
-                            <img src="{{ asset($settings['logo_path']) }}" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_thermal'] ?? 40 }}px; margin-bottom: 4px;">
+                            <img src="{{ asset($settings['logo_path']) }}" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_thermal'] ?? 40 }}px;">
                         @else
-                            <img src="" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_thermal'] ?? 40 }}px; margin-bottom: 4px; display: none;">
+                            <img src="" alt="Logo" class="preview-logo" style="max-height: {{ $settings['logo_size_thermal'] ?? 40 }}px; display: none;">
                         @endif
-                        <div style="font-size: 16px; font-weight: 900; margin: 4px 0;" id="preview-company-name-thermal">{{ $settings['company_name'] }}</div>
-                        @if($settings['address'])<div style="font-size: 11px; margin: 2px 0;" id="preview-address-thermal">{{ $settings['address'] }}</div>@endif
-                        @if($settings['phone'])<div style="font-size: 11px; margin: 2px 0;">Tel: {{ $settings['phone'] }}</div>@endif
-                        @if($settings['tax_id'])<div style="font-size: 11px; margin: 2px 0;">Tax ID: {{ $settings['tax_id'] }}</div>@endif
+                        <div class="thermal-company" id="preview-company-name-thermal">{{ $settings['company_name'] }}</div>
+                        <div id="preview-address-thermal">{{ $settings['address'] }}</div>
+                        @if($settings['phone'])<div>Tel: {{ $settings['phone'] }}</div>@endif
+                        @if($settings['tax_id'])<div>Tax ID: {{ $settings['tax_id'] }}</div>@endif
                     </div>
-                    <div style="border-top: 2px dashed #000; margin: 8px 0;"></div>
-                    <div style="text-align: center; margin-bottom: 8px;">
-                        <div style="font-size: 14px; font-weight: 900;">{{ $settings['invoice_prefix'] }}-001</div>
-                        <div style="font-size: 11px;">{{ now()->format('d/m/Y H:i') }}</div>
+                    <div class="thermal-divider"></div>
+                    <div class="thermal-meta">
+                        <div class="thermal-invoice" id="preview-invoice-prefix-thermal">{{ $settings['invoice_prefix'] }}-001</div>
+                        <div>{{ now()->format('d/m/Y H:i') }}</div>
                     </div>
-                    <div style="margin-bottom: 6px; font-size: 11px;">
-                        <strong>{{ $settings['company_name'] }}</strong>
+                    <div class="thermal-info">
+                        <div><strong>Customer:</strong> John Doe</div>
+                        <div><strong>Vehicle:</strong> ABC-1234</div>
                     </div>
-                    <div style="margin-bottom: 6px; font-size: 11px;">
-                        <strong>Customer:</strong> John Doe
-                    </div>
-                    <div style="margin-bottom: 6px; font-size: 11px;">
-                        <strong>Vehicle:</strong> ABC-1234
-                    </div>
-                    <div style="border-top: 2px dashed #000; margin: 8px 0;"></div>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px;">
+                    <div class="thermal-divider"></div>
+                    <table class="thermal-table">
                         <tr>
-                            <td style="text-align: left; padding: 2px 0;">Full Car Wash Service</td>
-                            <td style="text-align: center; padding: 2px 0;">1</td>
-                            <td style="text-align: right; padding: 2px 0;">500</td>
+                            <td>Full Car Wash Service</td>
+                            <td>1</td>
+                            <td>500</td>
                         </tr>
                         <tr>
-                            <td style="text-align: left; padding: 2px 0;">Interior Detailing</td>
-                            <td style="text-align: center; padding: 2px 0;">1</td>
-                            <td style="text-align: right; padding: 2px 0;">300</td>
+                            <td>Interior Detailing</td>
+                            <td>1</td>
+                            <td>300</td>
                         </tr>
                     </table>
-                    <div style="border-top: 2px dashed #000; margin: 8px 0;"></div>
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 11px;">
-                        Subtotal: 800
+                    <div class="thermal-divider"></div>
+                    <div class="thermal-totals">
+                        <div>Subtotal: 800</div>
+                        <div>Tax: 80</div>
+                        <div class="grand">TOTAL: Rs. 880</div>
+                        <div>Received: Rs. 880</div>
+                        <div>Return: Rs. 0</div>
                     </div>
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 11px;">
-                        Tax: 80
-                    </div>
-                    <div style="text-align: right; margin-bottom: 6px; font-size: 13px; font-weight: 900; border-top: 2px solid #000; padding-top: 4px;">
-                        TOTAL: Rs. 880
-                    </div>
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 11px;">
-                        Received: Rs. 880
-                    </div>
-                    <div style="text-align: right; margin-bottom: 4px; font-size: 11px;">
-                        Return: Rs. 0
-                    </div>
-                    <div style="border-top: 2px dashed #000; margin: 8px 0;"></div>
-                    <div style="text-align: center; margin-top: 8px; font-size: 14px; font-weight: 900;">
-                        PAID
-                    </div>
-                    <div style="border-top: 2px dashed #000; margin: 8px 0;"></div>
-                    <div style="text-align: center; margin-top: 8px; font-size: 10px;">
-                        <div style="margin: 2px 0;" id="preview-footer-thermal">{{ $settings['footer_text'] }}</div>
-                        <div style="margin: 2px 0;">{{ now()->format('d/m/Y H:i') }}</div>
-                        <div style="margin: 2px 0;">Thank you for your business!</div>
-                        <div style="margin: 4px 0 0 0; font-weight: bold;">Powered by Vellix Global - 0773208478</div>
+                    <div class="thermal-divider"></div>
+                    <div class="thermal-paid">PAID</div>
+                    <div class="thermal-divider"></div>
+                    <div class="thermal-footer">
+                        <div id="preview-footer-thermal">{{ $settings['footer_text'] }}</div>
+                        <div>{{ now()->format('d/m/Y H:i') }}</div>
+                        <div>Thank you for your business!</div>
+                        <div class="powered">Powered by Vellix Global - 0773208478</div>
                     </div>
                 </div>
             </div>
@@ -541,41 +436,43 @@
     const bgPathHidden = document.getElementById('bg-path-hidden');
     const previewContainer = document.getElementById('reception-preview');
 
-    bgDropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        bgDropzone.style.borderColor = '#3498db';
-        bgDropzone.style.backgroundColor = '#f0f8ff';
-    });
+    if (bgDropzone) {
+        bgDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            bgDropzone.style.borderColor = '#3498db';
+            bgDropzone.style.backgroundColor = '#f0f8ff';
+        });
 
-    bgDropzone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        bgDropzone.style.borderColor = '#ccc';
-        bgDropzone.style.backgroundColor = 'transparent';
-    });
+        bgDropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            bgDropzone.style.borderColor = '#ccc';
+            bgDropzone.style.backgroundColor = 'transparent';
+        });
 
-    bgDropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        bgDropzone.style.borderColor = '#ccc';
-        bgDropzone.style.backgroundColor = 'transparent';
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            bgInput.files = files;
-            previewImage(files[0], bgDropzone);
-            updateImagePreview(files[0]);
-        }
-    });
+        bgDropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            bgDropzone.style.borderColor = '#ccc';
+            bgDropzone.style.backgroundColor = 'transparent';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                bgInput.files = files;
+                previewImage(files[0], bgDropzone);
+                updateImagePreview(files[0]);
+            }
+        });
 
-    bgDropzone.addEventListener('click', () => {
-        bgInput.click();
-    });
+        bgDropzone.addEventListener('click', () => {
+            bgInput.click();
+        });
 
-    bgInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            previewImage(e.target.files[0], bgDropzone);
-            updateImagePreview(e.target.files[0]);
-        }
-    });
+        bgInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                previewImage(e.target.files[0], bgDropzone);
+                updateImagePreview(e.target.files[0]);
+            }
+        });
+    }
 
     function removeBackground() {
         bgPathHidden.value = '';
@@ -654,7 +551,6 @@
         if (bgDiv && colorSelect && colorSelect.value) {
             bgDiv.style.backgroundImage = 'none';
             bgDiv.style.background = colorSelect.value;
-            // Clear custom color when predefined color is selected
             customColorInput.value = '#667eea';
             hexInput.value = '#667eea';
             customPreview.style.background = '#667eea';
@@ -691,51 +587,143 @@
         }
     }
 
-    // Billing settings scripts
-    document.getElementById('logo-size-a4').addEventListener('input', (e) => {
+    // Logo dropzone
+    const dropzone = document.getElementById('logo-dropzone');
+    const fileInput = document.getElementById('logo-input');
+    const logoPathHidden = document.getElementById('logo-path-hidden');
+
+    if (dropzone) {
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '#3498db';
+            dropzone.style.backgroundColor = '#f0f8ff';
+        });
+
+        dropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '#ccc';
+            dropzone.style.backgroundColor = 'transparent';
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '#ccc';
+            dropzone.style.backgroundColor = 'transparent';
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                previewImageLogo(files[0], dropzone);
+                updateLogoPreview(files[0]);
+            }
+        });
+
+        dropzone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                previewImageLogo(e.target.files[0], dropzone);
+                updateLogoPreview(e.target.files[0]);
+            }
+        });
+    }
+
+    function removeLogo() {
+        logoPathHidden.value = '';
+        fileInput.value = '';
+        const img = dropzone.querySelector('img');
+        if (img) img.remove();
+        const removeBtn = dropzone.querySelector('button');
+        if (removeBtn) removeBtn.remove();
+        
+        dropzone.innerHTML = `
+            <div class="upload-placeholder">
+                <span class="upload-icon">📁</span>
+                <span class="upload-text">Click to upload or drag and drop</span>
+                <span class="upload-subtext">JPEG, PNG, JPG, GIF (Max 2MB)</span>
+            </div>
+        `;
+        dropzone.appendChild(fileInput);
+        
+        document.querySelectorAll('.preview-logo').forEach(el => el.style.display = 'none');
+    }
+
+    function previewImageLogo(file, dropzone) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            dropzone.innerHTML = `
+                <div class="current-image">
+                    <img src="${e.target.result}" alt="Current Logo" style="max-height:100px;margin-bottom:10px;">
+                    <button type="button" onclick="removeLogo()" class="remove-btn">Remove Logo</button>
+                </div>
+            `;
+            dropzone.appendChild(fileInput);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function updateLogoPreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.querySelectorAll('.preview-logo').forEach(el => {
+                el.src = e.target.result;
+                el.style.display = 'block';
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Billing live preview updates
+    document.getElementById('logo-size-a4')?.addEventListener('input', (e) => {
         document.getElementById('logo-size-a4-value').textContent = e.target.value;
         document.querySelectorAll('#preview-a4 .preview-logo').forEach(el => {
             el.style.maxHeight = e.target.value + 'px';
         });
     });
     
-    document.getElementById('logo-size-thermal').addEventListener('input', (e) => {
+    document.getElementById('logo-size-thermal')?.addEventListener('input', (e) => {
         document.getElementById('logo-size-thermal-value').textContent = e.target.value;
         document.querySelectorAll('#preview-thermal .preview-logo').forEach(el => {
             el.style.maxHeight = e.target.value + 'px';
         });
     });
     
-    document.getElementById('company-name').addEventListener('input', (e) => {
-        document.getElementById('preview-company-name-a4').textContent = e.target.value || 'Company Name';
-        document.getElementById('preview-company-name-thermal').textContent = e.target.value || 'Company Name';
+    document.getElementById('company-name')?.addEventListener('input', (e) => {
+        const val = e.target.value || 'Company Name';
+        document.getElementById('preview-company-name-a4').textContent = val;
+        document.getElementById('preview-company-name-thermal').textContent = val;
     });
     
-    document.getElementById('address').addEventListener('input', (e) => {
-        document.getElementById('preview-address-a4').textContent = e.target.value || 'Address';
-        document.getElementById('preview-address-thermal').textContent = e.target.value || 'Address';
+    document.getElementById('address')?.addEventListener('input', (e) => {
+        const val = e.target.value || '';
+        document.getElementById('preview-address-a4').textContent = val;
+        document.getElementById('preview-address-thermal').textContent = val;
     });
     
-    document.getElementById('phone').addEventListener('input', (e) => {
-        document.getElementById('preview-phone-a4').textContent = e.target.value ? 'Phone: ' + e.target.value : 'Phone';
+    document.getElementById('phone')?.addEventListener('input', (e) => {
+        document.getElementById('preview-phone-a4').textContent = e.target.value ? 'Phone: ' + e.target.value : '';
     });
     
-    document.getElementById('email').addEventListener('input', (e) => {
-        document.getElementById('preview-email-a4').textContent = e.target.value ? 'Email: ' + e.target.value : 'Email';
+    document.getElementById('email')?.addEventListener('input', (e) => {
+        document.getElementById('preview-email-a4').textContent = e.target.value ? 'Email: ' + e.target.value : '';
     });
     
-    document.getElementById('invoice-prefix').addEventListener('input', (e) => {
-        document.getElementById('preview-invoice-prefix-a4').textContent = (e.target.value || 'INV') + '-001';
-        document.getElementById('preview-invoice-prefix-thermal').textContent = (e.target.value || 'INV') + '-001';
+    document.getElementById('invoice-prefix')?.addEventListener('input', (e) => {
+        const val = (e.target.value || 'INV') + '-001';
+        document.getElementById('preview-invoice-prefix-a4').textContent = val;
+        document.getElementById('preview-invoice-prefix-thermal').textContent = val;
     });
     
-    document.getElementById('footer-text').addEventListener('input', (e) => {
-        document.getElementById('preview-footer-a4').textContent = e.target.value || 'Footer Text';
-        document.getElementById('preview-footer-thermal').textContent = e.target.value || 'Footer Text';
+    document.getElementById('footer-text')?.addEventListener('input', (e) => {
+        const val = e.target.value || '';
+        document.getElementById('preview-footer-a4').textContent = val;
+        document.getElementById('preview-footer-thermal').textContent = val;
     });
     
-    document.getElementById('terms-conditions').addEventListener('input', (e) => {
-        document.getElementById('preview-terms-a4').textContent = e.target.value || 'Terms & Conditions';
+    document.getElementById('terms-conditions')?.addEventListener('input', (e) => {
+        document.getElementById('preview-terms-a4').textContent = e.target.value || '';
     });
     
     function showPreview(format) {
@@ -747,30 +735,33 @@
         document.getElementById('btn-' + format).classList.add('primary');
     }
     
+    // Initialize
     showPreview('{{ $settings['default_format'] }}');
     toggleBackgroundType();
 </script>
 
 <style>
+/* ========== BASE ========== */
 .settings-tabs {
     display: flex;
     gap: 8px;
-    margin-bottom: 15px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
 }
 
 .tab-btn {
-    padding: 10px 16px;
+    padding: 11px 18px;
     border: none;
-    background: #f8f9fa;
-    border-radius: 6px;
+    background: #f1f3f5;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
-    color: #666;
-    transition: all 0.3s ease;
+    color: #555;
+    transition: all 0.25s ease;
     flex: 1;
-    min-width: 120px;
+    min-width: 140px;
+    text-align: center;
 }
 
 .tab-btn:hover {
@@ -780,6 +771,7 @@
 .tab-btn.active {
     background: #4a90e2;
     color: white;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 
 .tab-content {
@@ -790,11 +782,34 @@
     display: block;
 }
 
+.panel {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+    overflow-x: hidden;
+}
+
+.panel h2 {
+    font-size: 17px;
+    margin: 0 0 18px 0;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.panel h3 {
+    font-size: 15px;
+    margin: 0 0 12px 0;
+    color: #34495e;
+}
+
+/* ========== BACKGROUND TYPE ========== */
 .bg-type-selector {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 24px;
 }
 
 .bg-type-option {
@@ -809,16 +824,18 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    transition: all 0.3s ease;
-    background: white;
+    padding: 18px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    background: #fafbfc;
+    height: 100%;
 }
 
 .bg-type-option input:checked + .bg-type-card {
     border-color: #4a90e2;
-    background: #f0f8ff;
+    background: #f0f7ff;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
 }
 
 .bg-type-card:hover {
@@ -826,36 +843,38 @@
 }
 
 .bg-type-icon {
-    font-size: 24px;
+    font-size: 28px;
     margin-bottom: 8px;
 }
 
 .bg-type-label {
     font-weight: 600;
-    color: #333;
+    color: #1f2937;
     margin-bottom: 4px;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .bg-type-desc {
-    font-size: 11px;
-    color: #666;
+    font-size: 12px;
+    color: #6b7280;
     text-align: center;
+    line-height: 1.3;
 }
 
+/* ========== UPLOAD ZONE ========== */
 .upload-zone {
-    border: 2px dashed #ccc;
-    padding: 20px;
+    border: 2px dashed #d1d5db;
+    padding: 24px 16px;
     text-align: center;
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    background: #f8f9fa;
+    transition: all 0.25s ease;
+    background: #f9fafb;
 }
 
 .upload-zone:hover {
     border-color: #4a90e2;
-    background: #f0f8ff;
+    background: #f0f7ff;
 }
 
 .current-image {
@@ -863,25 +882,27 @@
 }
 
 .current-image img {
-    max-height: 120px;
+    max-height: 130px;
     border-radius: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     max-width: 100%;
+    object-fit: contain;
 }
 
 .remove-btn {
-    background: #e74c3c;
+    background: #ef4444;
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 5px;
+    padding: 7px 14px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 11px;
-    transition: all 0.3s ease;
+    font-size: 12px;
+    font-weight: 500;
+    transition: background 0.2s;
 }
 
 .remove-btn:hover {
-    background: #c0392b;
+    background: #dc2626;
 }
 
 .upload-placeholder {
@@ -892,24 +913,26 @@
 }
 
 .upload-icon {
-    font-size: 32px;
+    font-size: 36px;
+    opacity: 0.7;
 }
 
 .upload-text {
     font-weight: 500;
-    color: #333;
-    font-size: 13px;
+    color: #374151;
+    font-size: 14px;
 }
 
 .upload-subtext {
-    font-size: 11px;
-    color: #666;
+    font-size: 12px;
+    color: #9ca3af;
 }
 
+/* ========== COLOR PRESETS ========== */
 .color-presets {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
+    gap: 14px;
     margin-bottom: 20px;
 }
 
@@ -926,18 +949,19 @@
 }
 
 .color-swatch {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
     border: 2px solid transparent;
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
     position: relative;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 .color-option input:checked + .color-swatch {
     border-color: #4a90e2;
-    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.25);
+    transform: scale(1.05);
 }
 
 .color-check {
@@ -946,11 +970,11 @@
     left: 50%;
     transform: translate(-50%, -50%);
     color: white;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     opacity: 0;
-    transition: opacity 0.3s ease;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: opacity 0.2s;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 
 .color-option input:checked + .color-swatch .color-check {
@@ -960,38 +984,39 @@
 .color-name {
     font-size: 11px;
     font-weight: 500;
-    color: #666;
+    color: #6b7280;
     text-align: center;
+    line-height: 1.2;
 }
 
 .custom-color-section {
-    margin-top: 20px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 10px;
-    border: 1px solid #e0e0e0;
+    margin-top: 16px;
+    padding: 18px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
 }
 
 .color-picker-wrapper {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 12px;
+    margin-top: 10px;
     flex-wrap: wrap;
 }
 
 .color-preview-box {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     border-radius: 10px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid #e5e7eb;
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .color-picker-wrapper input[type="color"] {
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     border: none;
     border-radius: 10px;
     cursor: pointer;
@@ -1001,14 +1026,14 @@
 
 .color-hex-input {
     flex: 1;
-    min-width: 100px;
-    padding: 10px 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-family: monospace;
-    font-size: 13px;
-    color: #333;
-    transition: border-color 0.3s ease;
+    min-width: 110px;
+    padding: 11px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    color: #1f2937;
+    transition: border-color 0.2s;
 }
 
 .color-hex-input:focus {
@@ -1016,18 +1041,17 @@
     border-color: #4a90e2;
 }
 
+/* ========== RECEPTION PREVIEW ========== */
 .preview-wrapper {
-    margin-top: 20px;
+    margin-top: 16px;
 }
 
 .reception-preview-full {
-    height: 350px;
-    border-radius: 10px;
+    height: 400px;
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
-    background-size: cover;
-    background-position: center;
-    box-shadow: 0 3px 15px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
 }
 
 .preview-bg {
@@ -1047,10 +1071,10 @@
 }
 
 .preview-content .reception-nav {
-    padding: 12px 15px;
+    padding: 14px 16px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 }
 
 .preview-content .nav-toggle {
@@ -1058,15 +1082,16 @@
     border: none;
     color: white;
     font-size: 18px;
-    width: 35px;
-    height: 35px;
-    border-radius: 6px;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
     cursor: pointer;
+    backdrop-filter: blur(8px);
 }
 
 .preview-content .nav-menu {
     display: flex;
-    gap: 15px;
+    gap: 18px;
 }
 
 .preview-content .nav-menu a {
@@ -1079,13 +1104,15 @@
 
 .preview-content .reception-header {
     text-align: center;
-    padding: 30px 15px;
+    padding: 32px 16px 20px;
+    flex-shrink: 0;
 }
 
 .preview-content .reception-header h1 {
-    font-size: 24px;
+    font-size: 26px;
     margin: 0 0 8px 0;
     font-weight: 700;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .preview-content .reception-header p {
@@ -1095,62 +1122,150 @@
 }
 
 .preview-content .search-section {
-    padding: 0 15px;
-    max-width: 500px;
+    padding: 0 16px;
+    max-width: 480px;
     margin: 0 auto;
+    width: 100%;
+    margin-bottom: 20px;
+    box-sizing: border-box;
 }
 
 .preview-content .search-box {
-    background: rgba(255,255,255,0.2);
-    border-radius: 10px;
-    padding: 12px 15px;
-    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.18);
+    border-radius: 12px;
+    padding: 14px 18px;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    min-height: 24px;
 }
 
-.preview-content .search-box input {
+/* Decorative placeholder text (not a real input) so it can wrap to
+   two lines on narrow screens instead of being clipped/overlapping. */
+.preview-content .search-placeholder {
+    display: block;
     width: 100%;
-    border: none;
-    background: transparent;
-    color: white;
-    font-size: 14px;
-    outline: none;
+    color: rgba(255,255,255,0.75);
+    font-size: 15px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
-.preview-content .search-box input::placeholder {
-    color: rgba(255,255,255,0.7);
+/* ========== BILLING LAYOUT ========== */
+.billing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.preview-panel {
+    position: sticky;
+    top: 20px;
 }
 
 .preview-toggle {
     display: flex;
     gap: 8px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.preview-toggle button {
+    flex: 1;
+}
+
+/* ========== FORM ELEMENTS ========== */
+.grid2, .grid3 {
+    display: grid;
+    gap: 14px;
+}
+
+.grid2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+label {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+}
+
+label input,
+label textarea,
+label select {
+    width: 100%;
+    padding: 11px 13px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-top: 5px;
+    background: white;
+    color: #1f2937;
+}
+
+label input:focus,
+label textarea:focus,
+label select:focus {
+    outline: none;
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+
+label textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+.range-label {
+    margin-top: 16px;
+}
+
+.range-label input[type="range"] {
+    width: 100%;
+    margin: 8px 0 4px;
+}
+
+.range-label small {
+    font-size: 12px;
+    color: #6b7280;
 }
 
 .toggle-group {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    padding-top: 6px;
 }
 
 .toggle-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
 }
 
 .toggle-label {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
-    color: #333;
+    color: #374151;
 }
 
 .switch {
     position: relative;
     display: inline-block;
-    width: 44px;
-    height: 24px;
+    width: 46px;
+    height: 26px;
+    flex-shrink: 0;
 }
 
 .switch input {
@@ -1166,21 +1281,22 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 24px;
+    background-color: #d1d5db;
+    transition: .3s;
+    border-radius: 26px;
 }
 
 .slider:before {
     position: absolute;
     content: "";
-    height: 18px;
-    width: 18px;
+    height: 20px;
+    width: 20px;
     left: 3px;
     bottom: 3px;
     background-color: white;
-    transition: .4s;
+    transition: .3s;
     border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 input:checked + .slider {
@@ -1191,17 +1307,382 @@ input:checked + .slider:before {
     transform: translateX(20px);
 }
 
-input:focus + .slider {
-    box-shadow: 0 0 1px #4a90e2;
+/* ========== BUTTONS ========== */
+.form-actions {
+    margin-top: 32px;
+    padding-top: 8px;
 }
 
-.checkbox-group {
+.primary, .secondary {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.primary {
+    background: #4a90e2;
+    color: white;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.primary:hover {
+    background: #3a7bc8;
+    transform: translateY(-1px);
+}
+
+.secondary {
+    background: #f1f3f5;
+    color: #4b5563;
+}
+
+.secondary:hover {
+    background: #e5e7eb;
+}
+
+.secondary.primary {
+    background: #4a90e2;
+    color: white;
+}
+
+/* ========== INVOICE PREVIEWS ========== */
+.preview-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.invoice-preview {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    color: #333;
+}
+
+/* A4 */
+.a4-preview {
+    padding: 22px;
+    max-width: 600px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto;
+    font-size: 12px;
+}
+
+.invoice-header {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 15px;
+    gap: 16px;
 }
 
-/* Responsive Styles */
+.invoice-left {
+    flex: 1;
+}
+
+.invoice-left h1 {
+    font-size: 20px;
+    margin: 8px 0 6px;
+    color: #2c3e50;
+}
+
+.invoice-left p {
+    margin: 3px 0;
+    color: #666;
+    font-size: 11px;
+}
+
+.invoice-right {
+    text-align: right;
+}
+
+.invoice-right h2 {
+    font-size: 18px;
+    margin: 0 0 10px;
+    color: #e74c3c;
+}
+
+.invoice-right p {
+    margin: 4px 0;
+    font-size: 11px;
+}
+
+.status-paid {
+    color: #16a34a;
+    font-weight: bold;
+}
+
+.invoice-parties {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    gap: 16px;
+}
+
+.invoice-parties h3 {
+    font-size: 13px;
+    margin: 0 0 8px;
+    color: #2c3e50;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+.invoice-parties p {
+    margin: 4px 0;
+    color: #666;
+    font-size: 11px;
+}
+
+.invoice-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 11px;
+}
+
+.invoice-table th,
+.invoice-table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.invoice-table th {
+    white-space: nowrap;
+}
+
+.th-short {
+    display: none;
+}
+
+.invoice-table th {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.invoice-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.invoice-table th:nth-child(1),
+.invoice-table td:nth-child(1) {
+    width: 28%;
+}
+
+.invoice-table th:nth-child(2),
+.invoice-table td:nth-child(2) {
+    width: 10%;
+    text-align: center;
+}
+
+.invoice-table th:nth-child(3),
+.invoice-table td:nth-child(3),
+.invoice-table th:nth-child(4),
+.invoice-table td:nth-child(4),
+.invoice-table th:nth-child(5),
+.invoice-table td:nth-child(5) {
+    width: 20.67%;
+    text-align: right;
+}
+
+.invoice-totals {
+    width: 250px;
+    margin-left: auto;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 11px;
+}
+
+.total-row.grand {
+    border-top: 2px solid #333;
+    border-bottom: none;
+    margin-top: 6px;
+    padding-top: 10px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.invoice-terms {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-left: 3px solid #e74c3c;
+    font-size: 10px;
+}
+
+.invoice-terms p {
+    margin: 4px 0 0;
+}
+
+.invoice-payment {
+    margin-top: 14px;
+    padding: 12px;
+    background: #f0f8ff;
+    border-left: 3px solid #3498db;
+    font-size: 10px;
+}
+
+.invoice-payment p {
+    margin: 4px 0 0;
+}
+
+.invoice-footer {
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px solid #ddd;
+    text-align: center;
+    color: #666;
+    font-size: 10px;
+}
+
+.invoice-footer p {
+    margin: 4px 0;
+}
+
+.powered {
+    font-weight: bold;
+    margin-top: 10px !important;
+}
+
+/* Thermal */
+.thermal-preview {
+    padding: 12px;
+    max-width: 280px;
+    margin: 0 auto;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.thermal-header {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.thermal-header img {
+    margin-bottom: 4px;
+}
+
+.thermal-company {
+    font-size: 16px;
+    font-weight: 900;
+    margin: 4px 0;
+}
+
+.thermal-header div {
+    font-size: 11px;
+    margin: 2px 0;
+}
+
+.thermal-divider {
+    border-top: 2px dashed #000;
+    margin: 8px 0;
+}
+
+.thermal-meta {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.thermal-invoice {
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.thermal-info {
+    margin-bottom: 6px;
+    font-size: 11px;
+}
+
+.thermal-info div {
+    margin-bottom: 4px;
+}
+
+.thermal-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    font-size: 11px;
+}
+
+.thermal-table td {
+    padding: 2px 0;
+}
+
+.thermal-table td:nth-child(2) {
+    text-align: center;
+}
+
+.thermal-table td:nth-child(3) {
+    text-align: right;
+}
+
+.thermal-totals {
+    text-align: right;
+    font-size: 11px;
+}
+
+.thermal-totals div {
+    margin-bottom: 3px;
+}
+
+.thermal-totals .grand {
+    font-size: 13px;
+    font-weight: 900;
+    border-top: 2px solid #000;
+    padding-top: 4px;
+    margin-top: 4px;
+}
+
+.thermal-paid {
+    text-align: center;
+    margin: 8px 0;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.thermal-footer {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 10px;
+}
+
+.thermal-footer div {
+    margin: 2px 0;
+}
+
+/* ========== RESPONSIVE ========== */
+
+/* Large tablets / small desktops */
+@media (max-width: 1100px) {
+    .billing-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .preview-panel {
+        position: static;
+    }
+}
+
+/* Tablets */
 @media (max-width: 768px) {
     .settings-tabs {
         flex-direction: column;
@@ -1211,39 +1692,55 @@ input:focus + .slider {
     .tab-btn {
         min-width: auto;
         width: 100%;
-        padding: 8px 12px;
-        font-size: 12px;
+        padding: 12px 14px;
+        font-size: 14px;
+    }
+    
+    .panel {
+        padding: 18px 16px;
+        border-radius: 10px;
+    }
+    
+    .panel h2 {
+        font-size: 16px;
+        margin-bottom: 14px;
     }
     
     .bg-type-selector {
         grid-template-columns: 1fr;
-        gap: 8px;
+        gap: 10px;
     }
     
     .bg-type-card {
-        padding: 12px;
+        padding: 14px;
+        flex-direction: row;
+        gap: 14px;
+        text-align: left;
     }
     
     .bg-type-icon {
-        font-size: 20px;
+        font-size: 24px;
+        margin-bottom: 0;
     }
     
     .bg-type-label {
-        font-size: 12px;
+        font-size: 14px;
+        margin-bottom: 2px;
     }
     
     .bg-type-desc {
-        font-size: 10px;
+        font-size: 12px;
+        text-align: left;
     }
     
     .color-presets {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
     }
     
     .color-swatch {
-        width: 45px;
-        height: 45px;
+        width: 46px;
+        height: 46px;
     }
     
     .color-name {
@@ -1253,25 +1750,29 @@ input:focus + .slider {
     .color-picker-wrapper {
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
     }
     
     .color-preview-box,
     .color-picker-wrapper input[type="color"] {
         width: 100%;
-        height: 45px;
+        height: 48px;
+    }
+    
+    .grid2, .grid3 {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
     
     .reception-preview-full {
-        height: 280px;
+        height: 340px;
+    }
+    
+    .preview-content .reception-header {
+        padding: 24px 16px 16px;
     }
     
     .preview-content .reception-header h1 {
-        font-size: 20px;
-    }
-    
-    .preview-content .reception-header p {
-        font-size: 12px;
+        font-size: 22px;
     }
     
     .preview-content .nav-menu {
@@ -1279,214 +1780,265 @@ input:focus + .slider {
     }
     
     .preview-content .search-section {
-        padding: 0 12px;
+        padding: 0 14px;
+        margin-bottom: 16px;
+    }
+    
+    .preview-content .search-placeholder {
+        font-size: 14px;
     }
     
     .upload-zone {
-        padding: 15px;
+        padding: 18px 12px;
     }
     
     .current-image img {
-        max-height: 80px;
+        max-height: 100px;
     }
     
-    .upload-icon {
-        font-size: 28px;
+    /* Scale down previews on tablet */
+    .a4-preview {
+        padding: 16px 14px;
+        font-size: 11px;
+    }
+
+    .invoice-header {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .invoice-parties {
+        flex-wrap: wrap;
+        gap: 14px;
+    }
+
+    .invoice-table {
+        font-size: 8px;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+        padding: 5px 3px;
+        line-height: 1.2;
+    }
+
+    .th-full {
+        display: none;
+    }
+
+    .th-short {
+        display: inline;
     }
     
-    .upload-text {
-        font-size: 12px;
+    .preview-toggle {
+        flex-direction: column;
     }
     
-    .upload-subtext {
-        font-size: 10px;
+    .preview-toggle button {
+        width: 100%;
+    }
+    
+    .form-actions .primary {
+        width: 100%;
     }
 }
 
+/* Mobile phones */
 @media (max-width: 480px) {
+    .page-head h1 {
+        font-size: 22px;
+    }
+    
+    .page-head p {
+        font-size: 13px;
+    }
+    
+    .panel {
+        padding: 16px 12px;
+    }
+    
+    .panel h2 {
+        font-size: 15px;
+    }
+    
+    .color-presets {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    
+    .color-swatch {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+    }
+    
+    .color-name {
+        font-size: 9px;
+    }
+    
+    .reception-preview-full {
+        height: 320px;
+        border-radius: 10px;
+    }
+    
+    .preview-content .reception-header {
+        padding: 20px 12px 14px;
+    }
+    
+    .preview-content .reception-header h1 {
+        font-size: 18px;
+    }
+    
+    .preview-content .reception-header p {
+        font-size: 12px;
+    }
+    
+    .preview-content .search-section {
+        padding: 0 12px;
+        margin-bottom: 14px;
+    }
+    
+    .preview-content .search-box {
+        padding: 12px 14px;
+    }
+    
+    .preview-content .search-placeholder {
+        font-size: 13px;
+        line-height: 1.3;
+    }
+    
+    .preview-content .nav-toggle {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+    
+    .upload-icon {
+        font-size: 30px;
+    }
+    
+    .upload-text {
+        font-size: 13px;
+    }
+    
+    .upload-subtext {
+        font-size: 11px;
+    }
+    
+    .a4-preview {
+        padding: 14px 12px;
+        font-size: 10px;
+    }
+
+    .invoice-header {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+    }
+
+    .invoice-right {
+        text-align: left;
+    }
+
+    .invoice-left h1 {
+        font-size: 16px;
+        margin: 6px 0 4px;
+    }
+
+    .invoice-right h2 {
+        font-size: 15px;
+    }
+
+    .invoice-parties {
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .invoice-table {
+        font-size: 6px;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+        padding: 4px 2px;
+        line-height: 1.2;
+    }
+
+    .th-full {
+        display: none;
+    }
+
+    .th-short {
+        display: inline;
+    }
+
+    .invoice-totals {
+        width: 100%;
+    }
+
+    .thermal-preview {
+        max-width: 100%;
+    }
+    
+    .primary, .secondary {
+        padding: 13px 16px;
+        font-size: 14px;
+        width: 100%;
+    }
+    
+    label {
+        font-size: 12px;
+    }
+    
+    label input,
+    label textarea,
+    label select {
+        padding: 12px;
+        font-size: 15px; /* better for mobile input */
+    }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
     .color-presets {
         grid-template-columns: repeat(2, 1fr);
     }
     
     .color-swatch {
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
     }
     
     .reception-preview-full {
-        height: 220px;
+        height: 300px;
     }
     
     .preview-content .reception-header h1 {
         font-size: 16px;
     }
     
-    .preview-content .reception-header p {
-        font-size: 11px;
-    }
-    
-    .preview-content .search-box {
-        padding: 10px 12px;
-    }
-    
-    .preview-content .search-box input {
-        font-size: 13px;
-    }
-    
-    .preview-content .reception-nav {
-        padding: 10px 12px;
-    }
-    
-    .preview-content .nav-toggle {
-        width: 32px;
-        height: 32px;
-        font-size: 16px;
-    }
-}
-
-/* Grid2 and Grid3 responsive classes */
-.grid2, .grid3 {
-    display: grid;
-    gap: 12px;
-}
-
-.grid2 {
-    grid-template-columns: repeat(2, 1fr);
-}
-
-.grid3 {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-@media (max-width: 768px) {
-    .grid2, .grid3 {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-}
-
-@media (min-width: 769px) and (max-width: 1024px) {
-    .grid3 {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-/* Form labels responsive */
-label {
-    display: block;
-    margin-bottom: 12px;
-}
-
-label input,
-label textarea,
-label select {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 13px;
-    transition: border-color 0.3s ease;
-}
-
-label input:focus,
-label textarea:focus,
-label select:focus {
-    outline: none;
-    border-color: #4a90e2;
-}
-
-label textarea {
-    resize: vertical;
-    min-height: 70px;
-}
-
-/* Preview containers responsive */
-.preview-container {
-    overflow-x: auto;
-}
-
-@media (max-width: 768px) {
-    .preview-container > div {
-        transform: scale(0.75);
-        transform-origin: top left;
-        width: 133%;
-    }
-}
-
-/* Buttons responsive */
-.primary, .secondary {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.primary {
-    background: #4a90e2;
-    color: white;
-}
-
-.primary:hover {
-    background: #357abd;
-}
-
-.secondary {
-    background: #f8f9fa;
-    color: #666;
-}
-
-.secondary:hover {
-    background: #e9ecef;
-}
-
-@media (max-width: 480px) {
-    .primary, .secondary {
-        width: 100%;
-        padding: 12px 16px;
+    .preview-content .search-placeholder {
         font-size: 12px;
     }
     
-    .preview-toggle {
-        flex-direction: column;
-        gap: 6px;
+    .a4-preview {
+        padding: 12px 10px;
+        font-size: 9px;
     }
-    
-    .preview-toggle button {
-        width: 100%;
-    }
-}
 
-/* Panel and form sections */
-.panel {
-    padding: 20px;
-}
-
-.panel h2 {
-    font-size: 16px;
-    margin-bottom: 15px;
-}
-
-.panel h3 {
-    font-size: 14px;
-    margin-bottom: 12px;
-}
-
-@media (max-width: 768px) {
-    .panel {
-        padding: 15px;
-    }
-    
-    .panel h2 {
+    .invoice-left h1 {
         font-size: 14px;
-        margin-bottom: 12px;
     }
-    
-    .panel h3 {
-        font-size: 13px;
-        margin-bottom: 10px;
+
+    .invoice-table {
+        font-size: 5.5px;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+        padding: 3px 2px;
     }
 }
 </style>
