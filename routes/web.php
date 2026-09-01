@@ -15,17 +15,18 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReceptionController;
+use App\Http\Controllers\ServiceController;
 
 Route::get('/', function(){
     if(!auth()->check()) return redirect()->route('login');
-    
+
     $user = auth()->user();
     // Redirect based on user permissions
     if($user->hasPermission('view_reception')) return redirect()->route('reception.index');
     if($user->hasPermission('view_dashboard')) return redirect()->route('dashboard');
     if($user->hasPermission('view_job_cards')) return redirect()->route('jobs.index');
     if($user->hasPermission('view_customers')) return redirect()->route('customers.index');
-    
+
     // Default fallback
     return redirect()->route('dashboard');
 });
@@ -40,6 +41,7 @@ Route::middleware('auth')->group(function(){
  Route::post('/reception/job',[ReceptionController::class,'createJob'])->name('reception.create-job')->middleware('permission:create_job_cards');
  Route::get('/reception/services',[ReceptionController::class,'getServices'])->name('reception.services')->middleware('permission:view_reception');
  Route::get('/reception/products',[ReceptionController::class,'getProducts'])->name('reception.products')->middleware('permission:view_reception');
+ Route::get('/reception/vehicle/{vehicle}/image',[ReceptionController::class,'vehicleImage'])->name('reception.vehicle-image')->middleware('permission:view_reception');
  Route::get('/customers/list',[CustomerController::class,'list'])->name('customers.list')->middleware('permission:view_customers');
  Route::get('/dashboard',[DashboardController::class,'index'])->name('dashboard')->middleware('permission:view_dashboard');
  Route::resource('customers',CustomerController::class)->middleware('permission:view_customers');

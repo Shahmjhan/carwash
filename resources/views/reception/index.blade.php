@@ -351,7 +351,13 @@ let jobImageFile = null;
 let jobImagePreviewUrl = null;
 
 function resolveImageUrl(image) {
-    if (!image || typeof image !== 'string') return null;
+    if (!image || typeof image !== 'string') {
+        return null;
+    }
+
+    image = image.trim();
+
+    // Already a complete URL
     if (
         image.startsWith('http://') ||
         image.startsWith('https://') ||
@@ -360,7 +366,9 @@ function resolveImageUrl(image) {
     ) {
         return image;
     }
-    return '/storage/' + image.replace(/^\/+/, '');
+
+    // Laravel-generated storage URL
+    return @json(asset('storage')) + '/' + image.replace(/^\/+/, '');
 }
 
 function showToast(message, type = 'success') {
@@ -877,7 +885,9 @@ function selectVehicleDirect(vehicle) {
         model: vehicle.model ?? '',
         category: vehicle.category ?? '',
         customer_id: vehicle.customer_id,
-        image: resolveImageUrl(vehicle.image_url || vehicle.image || null)
+
+        // Prefer Laravel's generated URL
+        image: vehicle.image_url || resolveImageUrl(vehicle.image || null)
     };
 
     document.getElementById('searchResults').innerHTML = '';
@@ -930,7 +940,9 @@ function selectVehicle(vehicle) {
         model: vehicle.model ?? '',
         category: vehicle.category ?? '',
         customer_id: vehicle.customer_id,
-        image: resolveImageUrl(vehicle.image_url || vehicle.image || null)
+
+        // Prefer Laravel's generated URL
+        image: vehicle.image_url || resolveImageUrl(vehicle.image || null)
     };
 
     showJobForm();
@@ -941,7 +953,7 @@ function showJobForm() {
     document.getElementById('jobModal').classList.add('active');
 
     jobImageFile = null;
-    jobImagePreviewUrl = resolveImageUrl(selectedVehicle?.image) || null;
+    jobImagePreviewUrl = selectedVehicle?.image || null;
 
     document.getElementById('customerDetails').innerHTML = `
         <p>
@@ -951,36 +963,57 @@ function showJobForm() {
     `;
 
     const vehicleImageContainer = document.getElementById('vehicleImageContainer');
-    const imageUrl = resolveImageUrl(selectedVehicle?.image);
+    const imageUrl = selectedVehicle?.image || null;
 
     vehicleImageContainer.innerHTML = '';
+
     if (imageUrl) {
         const img = document.createElement('img');
+
+        img.src = imageUrl;
         img.alt = 'Vehicle Image';
+
         img.style.width = '100%';
-        img.style.height = 'auto';
+        img.style.height = '180px';
         img.style.display = 'block';
         img.style.objectFit = 'cover';
-        img.style.minHeight = '180px';
-        img.onerror = function () {
-            vehicleImageContainer.innerHTML = '<div class="vehicle-placeholder"><span>Vehicle Image</span></div>';
-            const btn = document.getElementById('removeJobImageBtn');
-            if (btn) btn.style.display = 'none';
-        };
+        img.style.borderRadius = '10px';
+
         img.onload = function () {
             const btn = document.getElementById('removeJobImageBtn');
-            if (btn) btn.style.display = 'inline-block';
+            if (btn) {
+                btn.style.display = 'inline-block';
+            }
         };
-        img.src = imageUrl;
+
+        img.onerror = function () {
+            console.error('Vehicle image failed:', imageUrl);
+
+            vehicleImageContainer.innerHTML = `
+                <div class="vehicle-placeholder">
+                    <span>Vehicle Image</span>
+                </div>
+            `;
+
+            const btn = document.getElementById('removeJobImageBtn');
+            if (btn) {
+                btn.style.display = 'none';
+            }
+        };
+
         vehicleImageContainer.appendChild(img);
-        document.getElementById('removeJobImageBtn').style.display = 'inline-block';
+
     } else {
         vehicleImageContainer.innerHTML = `
             <div class="vehicle-placeholder">
                 <span>Vehicle Image</span>
             </div>
         `;
-        document.getElementById('removeJobImageBtn').style.display = 'none';
+
+        const btn = document.getElementById('removeJobImageBtn');
+        if (btn) {
+            btn.style.display = 'none';
+        }
     }
 
     const category = selectedVehicle?.category;
@@ -1580,24 +1613,6 @@ document.addEventListener('click', (e) => {
     -webkit-backdrop-filter: blur(24px) saturate(140%);
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-@media (max-width: 768px) {
-    .search-box input {
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 12px;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-    }
-}
-
-@media (max-width: 480px) {
-    .search-box input {
-        padding: 6px 10px;
-        border-radius: 6px;
-        font-size: 11px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-    }
 }
 
 .search-box input::placeholder {
