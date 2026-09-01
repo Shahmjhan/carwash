@@ -9,11 +9,49 @@
     }
 
     .kanban-column {
-        background: #f8fafc;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border-radius: 16px;
         padding: 20px;
         min-height: 400px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .kanban-column[data-status="pending"] {
+        border-top: 4px solid #f59e0b;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(245, 158, 11, 0.1));
+    }
+
+    .kanban-column[data-status="check_in"] {
+        border-top: 4px solid #3b82f6;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(59, 130, 246, 0.1));
+    }
+
+    .kanban-column[data-status="inspection"] {
+        border-top: 4px solid #8b5cf6;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(139, 92, 246, 0.1));
+    }
+
+    .kanban-column[data-status="in_progress"] {
+        border-top: 4px solid #f97316;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(249, 115, 22, 0.1));
+    }
+
+    .kanban-column[data-status="painting"] {
+        border-top: 4px solid #ec4899;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(236, 72, 153, 0.1));
+    }
+
+    .kanban-column[data-status="completed"] {
+        border-top: 4px solid #10b981;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(16, 185, 129, 0.1));
+    }
+
+    .kanban-column[data-status="delivered"] {
+        border-top: 4px solid #6366f1;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(99, 102, 241, 0.1));
     }
 
     .column-header {
@@ -182,6 +220,10 @@
         display: none !important;
     }
 
+    body.tv-mode #tvToggle {
+        display: block !important;
+    }
+
     body.tv-mode .main {
         margin-left: 0 !important;
         width: 100% !important;
@@ -264,6 +306,7 @@
     }
 
     .tv-toggle-btn {
+        position: static;
         background: #2563eb;
         color: white;
         border: none;
@@ -273,7 +316,7 @@
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         transition: all 0.3s ease;
-        margin-left: 10px;
+        margin-top: 20px;
     }
 
     .tv-toggle-btn:hover {
@@ -283,6 +326,10 @@
 
     body.tv-mode .tv-toggle-btn {
         background: #dc2626;
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 999999 !important;
     }
 
     body.tv-mode .tv-toggle-btn:hover {
@@ -295,11 +342,12 @@
         <h1>Live Job Board</h1>
         <p>Operational state of every active vehicle.</p>
     </div>
-    <div>
+    <div style="margin-top: 20px; margin-right: 100px;">
         <a class="primary" href="{{ route('jobs.create') }}">+ New Job</a>
-        <button class="tv-toggle-btn" id="tvToggle">📺 TV Mode</button>
     </div>
 </div>
+
+<button class="tv-toggle-btn" id="tvToggle">📺 TV Mode</button>
 
 <div class="kanban-board" id="jobBoard">
     @foreach($kanbanColumns as $column)
@@ -372,20 +420,74 @@
 
 <script>
 let lastUpdate = {{ now()->timestamp }};
+let sidebarStateBeforeTV = null;
 
 // TV Mode Toggle
 const tvToggle = document.getElementById('tvToggle');
 tvToggle.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    const main = document.querySelector('.main');
+    const sidebarToggleBtn = document.getElementById('sidebarToggle');
+
+    if (!document.body.classList.contains('tv-mode')) {
+        sidebarStateBeforeTV = {
+            sidebarCollapsed: sidebar ? sidebar.classList.contains('collapsed') : false,
+            mainExpanded: main ? main.classList.contains('expanded') : false,
+            toggleCollapsed: sidebarToggleBtn ? sidebarToggleBtn.classList.contains('collapsed') : false
+        };
+    }
+
     document.body.classList.toggle('tv-mode');
+
     if (document.body.classList.contains('tv-mode')) {
         tvToggle.textContent = '❌ Exit TV Mode';
+        tvToggle.style.position = 'fixed';
+        tvToggle.style.top = '20px';
+        tvToggle.style.right = '20px';
+        tvToggle.style.zIndex = '999999';
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen();
         }
     } else {
         tvToggle.textContent = '📺 TV Mode';
+        tvToggle.style.position = 'static';
+        tvToggle.style.top = 'auto';
+        tvToggle.style.right = 'auto';
+        tvToggle.style.zIndex = 'auto';
         if (document.exitFullscreen) {
             document.exitFullscreen();
+        }
+
+        if (sidebarStateBeforeTV && sidebar && main) {
+            if (sidebarStateBeforeTV.sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+            }
+
+            if (sidebarStateBeforeTV.mainExpanded) {
+                main.classList.add('expanded');
+            } else {
+                main.classList.remove('expanded');
+            }
+
+            if (sidebarToggleBtn) {
+                if (sidebarStateBeforeTV.toggleCollapsed) {
+                    sidebarToggleBtn.classList.add('collapsed');
+                    sidebarToggleBtn.style.background = '#2563eb';
+                    sidebarToggleBtn.style.borderColor = '#2563eb';
+                    if (sidebarToggleBtn.querySelector('svg')) {
+                        sidebarToggleBtn.querySelector('svg').style.stroke = 'white';
+                    }
+                } else {
+                    sidebarToggleBtn.classList.remove('collapsed');
+                    sidebarToggleBtn.style.background = 'white';
+                    sidebarToggleBtn.style.borderColor = '#e5e7eb';
+                    if (sidebarToggleBtn.querySelector('svg')) {
+                        sidebarToggleBtn.querySelector('svg').style.stroke = '#1a1a2e';
+                    }
+                }
+            }
         }
     }
 });
@@ -412,3 +514,4 @@ function refreshJobBoard() {
 setInterval(refreshJobBoard, 2000);
 </script>
 @endsection
+

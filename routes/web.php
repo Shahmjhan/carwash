@@ -13,7 +13,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CashierController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\ReceptionController;
 
 Route::get('/', function(){
@@ -56,6 +56,9 @@ Route::middleware('auth')->group(function(){
  Route::resource('inventory',InventoryController::class)->except(['show'])->parameters(['inventory'=>'product'])->middleware('permission:view_item_master');
  Route::post('/inventory/{product}/adjust',[InventoryController::class,'adjust'])->name('inventory.adjust')->middleware('permission:adjust_stock_item_master');
  Route::resource('categories',CategoryController::class)->middleware('permission:view_categories');
+ Route::resource('services',ServiceController::class)->middleware('permission:view_services');
+ Route::post('/services/{service}/toggle',[ServiceController::class,'toggle'])->name('services.toggle')->middleware('permission:view_services');
+ Route::post('/service-categories',[ServiceCategoryController::class,'store'])->name('service-categories.store')->middleware('permission:view_services');
  Route::resource('invoices',InvoiceController::class)->only(['index','show'])->middleware('permission:view_invoices');
  Route::post('/invoices/{invoice}/pay',[InvoiceController::class,'pay'])->name('invoices.pay')->middleware('permission:pay_invoices');
  Route::get('/invoices/{invoice}/print/{format?}',[InvoiceController::class,'printInvoice'])->name('invoices.print')->middleware('permission:print_invoices')->where('format','a4|thermal');
