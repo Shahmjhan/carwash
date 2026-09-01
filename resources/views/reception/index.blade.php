@@ -1552,9 +1552,28 @@ document.addEventListener('click', (e) => {
     border-radius: 12px;
     padding: 10px;
     min-width: 200px;
+    max-height: 70vh;
+    overflow-y: auto;
     display: none;
     backdrop-filter: blur(16px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.nav-menu::-webkit-scrollbar {
+    width: 4px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .nav-menu.active {
@@ -1613,6 +1632,110 @@ document.addEventListener('click', (e) => {
     -webkit-backdrop-filter: blur(24px) saturate(140%);
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 1024px) {
+    .nav-toggle {
+        padding: 8px 12px;
+        font-size: 16px;
+        min-width: 36px;
+        min-height: 36px;
+    }
+
+    .nav-menu {
+        min-width: 180px;
+        padding: 10px;
+    }
+
+    .nav-menu a {
+        padding: 12px 14px;
+        font-size: 14px;
+    }
+
+    .search-box input {
+        padding: 12px 14px;
+        font-size: 13px;
+        border-radius: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .reception-header {
+        padding-top: 20px;
+        margin-bottom: 20px;
+    }
+
+    .reception-header h1 {
+        font-size: 24px;
+    }
+
+    .reception-header p {
+        font-size: 14px;
+    }
+
+    .nav-toggle {
+        padding: 5px 8px;
+        font-size: 12px;
+        min-width: 28px;
+        min-height: 28px;
+    }
+
+    .nav-menu {
+        min-width: 160px;
+        padding: 8px;
+        max-height: 60vh;
+    }
+
+    .nav-menu a {
+        padding: 10px 12px;
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+
+    .search-box input {
+        padding: 6px 8px;
+        font-size: 10px;
+        border-radius: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .reception-header {
+        padding-top: 16px;
+        margin-bottom: 16px;
+    }
+
+    .reception-header h1 {
+        font-size: 20px;
+    }
+
+    .reception-header p {
+        font-size: 12px;
+    }
+
+    .nav-toggle {
+        padding: 4px 6px;
+        font-size: 10px;
+        min-width: 24px;
+        min-height: 24px;
+    }
+
+    .nav-menu {
+        min-width: 140px;
+        padding: 6px;
+        max-height: 50vh;
+    }
+
+    .nav-menu a {
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    .search-box input {
+        padding: 5px 7px;
+        font-size: 9px;
+        border-radius: 5px;
+    }
 }
 
 .search-box input::placeholder {

@@ -74,6 +74,28 @@ enum JobStatus: string
         return in_array($status, $transitions[$this->value] ?? []);
     }
 
+    public function getAvailableTransitions(): array
+    {
+        $transitions = [
+            self::WAITING_FOR_CHECKIN->value => [self::CHECKED_IN, self::CANCELLED],
+            self::CHECKED_IN->value => [self::INSPECTION_PENDING, self::IN_SERVICE, self::CANCELLED, self::ON_HOLD],
+            self::INSPECTION_PENDING->value => [self::INSPECTION_COMPLETED, self::CANCELLED, self::ON_HOLD],
+            self::INSPECTION_COMPLETED->value => [self::CUSTOMER_APPROVAL_PENDING, self::APPROVED, self::ON_HOLD],
+            self::CUSTOMER_APPROVAL_PENDING->value => [self::APPROVED, self::ON_HOLD, self::CANCELLED],
+            self::APPROVED->value => [self::WAITING_FOR_PARTS, self::IN_SERVICE, self::ON_HOLD],
+            self::WAITING_FOR_PARTS->value => [self::IN_SERVICE, self::ON_HOLD, self::CANCELLED],
+            self::IN_SERVICE->value => [self::QUALITY_CHECK, self::ON_HOLD],
+            self::QUALITY_CHECK->value => [self::READY_FOR_PAYMENT, self::IN_SERVICE],
+            self::READY_FOR_PAYMENT->value => [self::PAID],
+            self::PAID->value => [self::DELIVERED],
+            self::DELIVERED->value => [],
+            self::CANCELLED->value => [],
+            self::ON_HOLD->value => [self::CHECKED_IN, self::INSPECTION_COMPLETED, self::APPROVED, self::IN_SERVICE, self::WAITING_FOR_PARTS, self::CANCELLED],
+        ];
+
+        return $transitions[$this->value] ?? [];
+    }
+
     public function isFinal(): bool
     {
         return in_array($this, [self::DELIVERED, self::CANCELLED]);
