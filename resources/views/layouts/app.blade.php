@@ -24,20 +24,13 @@
             transition: all 0.3s ease !important;
         }
 
-        #sidebarToggle.collapsed {
-            background: #2563eb !important;
-            border-color: #2563eb !important;
-        }
-
-        #sidebarToggle.collapsed svg {
-            stroke: white !important;
-            transform: rotate(180deg) !important;
+        #sidebarToggle svg {
+            transition: transform 0.3s ease, stroke 0.3s ease !important;
         }
     </style>
 </head>
 <body>
     <aside class="sidebar" id="sidebar">
-        <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">✕</button>
         @php
             $business = auth()->user()->business;
             $settings = $business ? $business->getBillingSettings() : [
@@ -150,8 +143,34 @@
     </aside>
     <main class="main">
         <div style="position:fixed;top:15px;left:15px;z-index:100000;">
-            <button id="sidebarToggle" aria-label="Toggle menu" style="display:flex !important;align-items:center !important;justify-content:center !important;width:40px !important;height:40px !important;background:white !important;border:1px solid #e5e7eb !important;border-radius:8px !important;cursor:pointer !important;padding:0 !important;box-shadow:0 2px 8px rgba(0,0,0,0.15) !important;z-index:100000 !important;transition:all 0.3s ease !important;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1a2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:stroke 0.3s ease !important;">
+            <button
+                id="sidebarToggle"
+                aria-label="Toggle menu"
+                style="
+                    display:flex !important;
+                    align-items:center !important;
+                    justify-content:center !important;
+                    width:30px !important;
+                    height:30px !important;
+                    background:white !important;
+                    border:1px solid #e5e7eb !important;
+                    border-radius:6px !important;
+                    cursor:pointer !important;
+                    padding:0 !important;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.12) !important;
+                    z-index:100000 !important;
+                    transition:all 0.3s ease !important;
+                ">
+                <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#1a1a2e"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="transition:transform 0.3s ease, stroke 0.3s ease !important;">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
@@ -178,45 +197,85 @@
 
     <script>
         const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebarClose = document.getElementById('sidebarClose');
         const sidebar = document.getElementById('sidebar');
         const main = document.querySelector('.main');
+        const toggleIcon = sidebarToggle.querySelector('svg');
+
+        function updateSidebarToggle() {
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            const isMobile = window.innerWidth <= 1024;
+            const isMobileActive = sidebar.classList.contains('active');
+
+            if (!isMobile) {
+                // Desktop
+                if (isCollapsed) {
+                    // Sidebar CLOSED → show >
+                    toggleIcon.style.transform = 'rotate(180deg)';
+                } else {
+                    // Sidebar OPEN → show <
+                    toggleIcon.style.transform = 'rotate(0deg)';
+                }
+            } else {
+                // Mobile / tablet
+                if (isMobileActive) {
+                    // Sidebar OPEN → show <
+                    toggleIcon.style.transform = 'rotate(0deg)';
+                } else {
+                    // Sidebar CLOSED → show >
+                    toggleIcon.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
 
         sidebarToggle.addEventListener('click', () => {
+
             if (window.innerWidth <= 1024) {
-                // Mobile/tablet - use active class for slide-in
+
+                // Mobile / tablet
                 sidebar.classList.toggle('active');
+
             } else {
-                // Desktop - use collapsed class for hide/show
+
+                // Desktop
                 sidebar.classList.toggle('collapsed');
                 main.classList.toggle('expanded');
-                sidebarToggle.classList.toggle('collapsed');
 
-                // Update button styles directly
-                if (sidebarToggle.classList.contains('collapsed')) {
-                    sidebarToggle.style.background = '#2563eb';
-                    sidebarToggle.style.borderColor = '#2563eb';
-                    sidebarToggle.querySelector('svg').style.stroke = 'white';
-                } else {
-                    sidebarToggle.style.background = 'white';
-                    sidebarToggle.style.borderColor = '#e5e7eb';
-                    sidebarToggle.querySelector('svg').style.stroke = '#1a1a2e';
-                }
             }
+
+            updateSidebarToggle();
         });
 
-        sidebarClose.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-        });
-        
-        // Close sidebar when clicking outside (mobile/tablet only)
+
+        // Close sidebar when clicking outside
+        // Mobile / tablet only
         document.addEventListener('click', (e) => {
+
             if (window.innerWidth <= 1024) {
-                if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+
+                if (
+                    !sidebar.contains(e.target) &&
+                    !sidebarToggle.contains(e.target)
+                ) {
+
                     sidebar.classList.remove('active');
+
+                    updateSidebarToggle();
                 }
             }
+
         });
+
+
+        // Keep arrow correct when resizing
+        window.addEventListener('resize', () => {
+
+            updateSidebarToggle();
+
+        });
+
+
+        // Initial state
+        updateSidebarToggle();
     </script>
 
     <style>
@@ -260,44 +319,6 @@
             display: flex !important;
             align-items: center !important;
             gap: 10px !important;
-        }
-
-        .sidebar-toggle {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 30px !important;
-            height: 30px !important;
-            background: transparent !important;
-            border: none !important;
-            cursor: pointer !important;
-            padding: 0 !important;
-            margin-right: 15px !important;
-            transition: transform 0.3s ease !important;
-        }
-
-        .sidebar-close {
-            display: none;
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            font-size: 18px;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 1001;
-            transition: all 0.3s ease;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sidebar-close:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: rotate(90deg);
         }
 
         .brand-logo {
@@ -451,10 +472,6 @@
                 display: flex;
             }
 
-            .sidebar-close {
-                display: block;
-            }
-
             aside.sidebar {
                 position: fixed !important;
                 left: -240px !important;
@@ -487,17 +504,14 @@
             }
 
             header {
-                padding: 15px;
+                padding: 15px !important;
+                padding-left: 65px !important;
             }
         }
 
         @media (max-width: 768px) {
             .sidebar-toggle {
                 display: flex;
-            }
-
-            .sidebar-close {
-                display: block;
             }
 
             aside.sidebar {
@@ -532,7 +546,8 @@
             }
 
             header {
-                padding: 15px;
+                padding: 12px !important;
+                padding-left: 62px !important;
             }
         }
 
@@ -553,14 +568,9 @@
                 height: 14px !important;
             }
 
-            .sidebar-toggle {
-                width: 24px;
-                height: 24px;
-            }
-            
-            .sidebar-toggle svg {
-                width: 16px;
-                height: 16px;
+            header {
+                padding: 10px !important;
+                padding-left: 62px !important;
             }
         }
 
