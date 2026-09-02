@@ -167,11 +167,12 @@
                                     <button type="submit" class="confirm-btn">Confirm Apply</button>
                                 </form>
                             @endif
-                            <form class="inline-form" method="post" action="{{ route('jobs.services.remove', [$job, $service]) }}" onsubmit="return confirm('Are you sure you want to remove this service?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="remove-btn">Remove</button>
-                            </form>
+                            <button type="button" class="close-btn" onclick="showCloseModal('service', {{ $service->id }}, '{{ $service->name_snapshot }}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 @empty
@@ -214,11 +215,12 @@
                                     <button type="submit" class="confirm-btn">Confirm Apply</button>
                                 </form>
                             @endif
-                            <form class="inline-form" method="post" action="{{ route('jobs.parts.remove', [$job, $part]) }}" onsubmit="return confirm('Are you sure you want to remove this part?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="remove-btn">Remove</button>
-                            </form>
+                            <button type="button" class="close-btn" onclick="showCloseModal('part', {{ $part->id }}, '{{ $part->product->name }}')">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 @empty
@@ -317,6 +319,23 @@
                     <button type="submit" class="btn-primary">Confirm Change</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Close Confirmation Modal -->
+<div id="closeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Close Item</h3>
+            <button class="modal-close" onclick="closeCloseModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="closeModalMessage"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" onclick="closeCloseModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="confirmClose()">OK</button>
+            </div>
         </div>
     </div>
 </div>
@@ -688,6 +707,52 @@
 
 .remove-btn:hover {
     background: #dc2626;
+}
+
+.close-btn {
+    padding: 6px 8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    background: #dc2626;
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.notification-success {
+    background: #10b981;
+}
+
+.notification-error {
+    background: #ef4444;
 }
 
 .service-price, .part-price {
@@ -1117,7 +1182,7 @@ function toggleWhatsappCheckbox() {
 
 function closeStatusModal() {
     document.getElementById('statusModal').classList.remove('active');
-    
+
     // Reset WhatsApp number input if exists
     const whatsappInput = document.getElementById('customerWhatsappNumber');
     if (whatsappInput) {
@@ -1125,12 +1190,80 @@ function closeStatusModal() {
         document.getElementById('sendWhatsapp').disabled = true;
         document.getElementById('sendWhatsapp').checked = false;
     }
-    
+
     // Reset custom notes
     const notesInput = document.getElementById('customNotes');
     if (notesInput) {
         notesInput.value = '';
     }
+}
+
+let currentCloseType = '';
+let currentCloseId = '';
+
+function showCloseModal(type, id, name) {
+    currentCloseType = type;
+    currentCloseId = id;
+    const modal = document.getElementById('closeModal');
+    const message = document.getElementById('closeModalMessage');
+    message.textContent = `Are you sure you want to close this ${type}: ${name}?`;
+    modal.classList.add('active');
+}
+
+function closeCloseModal() {
+    document.getElementById('closeModal').classList.remove('active');
+    currentCloseType = '';
+    currentCloseId = '';
+}
+
+function confirmClose() {
+    const jobId = '{{ $job->id }}';
+    let url = '';
+    if (currentCloseType === 'service') {
+        url = `/jobs/${jobId}/services/${currentCloseId}/remove`;
+    } else if (currentCloseType === 'part') {
+        url = `/jobs/${jobId}/parts/${currentCloseId}/remove`;
+    }
+
+    fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeCloseModal();
+            showNotification(data.message || 'Closed successfully', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.message || 'Error closing item', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error closing item', 'error');
+    });
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
 }
 
 // Add form data before submission
