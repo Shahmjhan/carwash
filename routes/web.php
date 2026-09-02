@@ -56,6 +56,10 @@ Route::middleware('auth')->group(function(){
  Route::post('/jobs/{job}/additional-work',[JobController::class,'additionalWork'])->name('jobs.additional-work')->middleware('permission:request_additional_work_job_cards');
  Route::post('/jobs/{job}/approve',[JobController::class,'approve'])->name('jobs.approve')->middleware('permission:approve_job_cards');
  Route::post('/jobs/{job}/consume-part',[JobController::class,'consumePart'])->name('jobs.consume-part')->middleware('permission:consume_parts_job_cards');
+Route::post('/jobs/{job}/parts/{part}/apply',[JobController::class,'applyPart'])->name('jobs.parts.apply')->middleware('permission:consume_parts_job_cards');
+Route::delete('/jobs/{job}/parts/{part}/remove',[JobController::class,'removePart'])->name('jobs.parts.remove')->middleware('permission:consume_parts_job_cards');
+Route::post('/jobs/{job}/services/{service}/apply',[JobController::class,'applyService'])->name('jobs.services.apply')->middleware('permission:consume_parts_job_cards');
+Route::delete('/jobs/{job}/services/{service}/remove',[JobController::class,'removeService'])->name('jobs.services.remove')->middleware('permission:consume_parts_job_cards');
  Route::resource('inventory',InventoryController::class)->except(['show'])->parameters(['inventory'=>'product'])->middleware('permission:view_item_master');
  Route::post('/inventory/{product}/adjust',[InventoryController::class,'adjust'])->name('inventory.adjust')->middleware('permission:adjust_stock_item_master');
  Route::resource('categories',CategoryController::class)->middleware('permission:view_categories');

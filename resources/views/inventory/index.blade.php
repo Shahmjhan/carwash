@@ -49,7 +49,7 @@
             @foreach($items as $i)
             <tr>
                 <td>
-                    @if($i->product->image)
+                    @if($i->product->image && file_exists(storage_path('app/public/'.$i->product->image)))
                         <img src="{{ asset('storage/'.$i->product->image) }}" alt="{{ $i->product->name }}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">
                     @else
                         <span style="color:#9ca3af;">No image</span>
@@ -59,12 +59,15 @@
                 <td><b>{{ $i->product->name }}</b></td>
                 <td>{{ $i->product->brand }}</td>
                 <td>
-                    @if($i->quantity == 0)
+                    @php
+                        $available = max(0, $i->quantity - ($i->reserved_quantity ?? 0));
+                    @endphp
+                    @if($available == 0)
                         <span style="color:#dc2626;font-weight:bold;">Out of Stock</span>
-                    @elseif($i->quantity <= $i->product->minimum_stock)
-                        <span style="color:#dc2626;font-weight:bold;">{{ $i->quantity }}</span>
+                    @elseif($available <= $i->product->minimum_stock)
+                        <span style="color:#dc2626;font-weight:bold;">{{ $available }}</span>
                     @else
-                        {{ $i->quantity }}
+                        {{ $available }}
                     @endif
                 </td>
                 <td>{{ $i->product->minimum_stock }}</td>

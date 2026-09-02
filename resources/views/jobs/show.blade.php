@@ -152,14 +152,27 @@
             <h3>Services</h3>
             <div class="services-list">
                 @forelse($job->services as $service)
-                    <div class="service-item">
+                    <div class="service-item {{ $service->approval_status === 'approved' ? 'service-applied' : 'service-pending' }}">
                         <div class="service-info">
                             <span class="service-name">{{ $service->name_snapshot }}</span>
                             <span class="service-status status-{{ $service->approval_status === 'approved' ? 'green' : ($service->approval_status === 'pending' ? 'yellow' : 'red') }}">
-                                {{ ucfirst($service->approval_status) }}
+                                {{ $service->approval_status === 'approved' ? 'Applied' : ucfirst($service->approval_status) }}
                             </span>
                         </div>
-                        <span class="service-price">Rs. {{ number_format($service->unit_price,2) }}</span>
+                        <div class="service-actions">
+                            <span class="service-price">Rs. {{ number_format($service->unit_price,2) }}</span>
+                            @if($service->approval_status === 'pending')
+                                <form class="inline-form" method="post" action="{{ route('jobs.services.apply', [$job, $service]) }}">
+                                    @csrf
+                                    <button type="submit" class="confirm-btn">Confirm Apply</button>
+                                </form>
+                            @endif
+                            <form class="inline-form" method="post" action="{{ route('jobs.services.remove', [$job, $service]) }}" onsubmit="return confirm('Are you sure you want to remove this service?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="remove-btn">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 @empty
                     <div class="empty-state">No services added</div>
@@ -185,12 +198,28 @@
             <h3>Parts Used</h3>
             <div class="parts-list">
                 @forelse($job->parts as $part)
-                    <div class="part-item">
+                    <div class="part-item {{ $part->applied ? 'part-applied' : 'part-pending' }}">
                         <div class="part-info">
                             <span class="part-name">{{ $part->product->name }}</span>
                             <span class="part-quantity">{{ $part->quantity }} {{ $part->product->unit ?? 'unit' }}</span>
+                            <span class="part-status {{ $part->applied ? 'status-green' : 'status-yellow' }}">
+                                {{ $part->applied ? 'Applied' : 'Pending' }}
+                            </span>
                         </div>
-                        <span class="part-price">Rs. {{ number_format($part->unit_price * $part->quantity,2) }}</span>
+                        <div class="part-actions">
+                            <span class="part-price">Rs. {{ number_format($part->unit_price * $part->quantity,2) }}</span>
+                            @if(!$part->applied)
+                                <form class="inline-form" method="post" action="{{ route('jobs.parts.apply', [$job, $part]) }}">
+                                    @csrf
+                                    <button type="submit" class="confirm-btn">Confirm Apply</button>
+                                </form>
+                            @endif
+                            <form class="inline-form" method="post" action="{{ route('jobs.parts.remove', [$job, $part]) }}" onsubmit="return confirm('Are you sure you want to remove this part?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="remove-btn">Remove</button>
+                            </form>
+                        </div>
                     </div>
                 @empty
                     <div class="empty-state">No parts consumed</div>
@@ -263,7 +292,7 @@
             <div class="whatsapp-section">
                 @if($job->customer->whatsapp_number)
                     <label class="whatsapp-toggle">
-                        <input type="checkbox" id="sendWhatsapp" checked>
+                        <input type="checkbox" id="sendWhatsapp">
                         <span class="slider"></span>
                         <span class="toggle-label">Send WhatsApp update to customer ({{ $job->customer->whatsapp_number }})</span>
                     </label>
@@ -565,6 +594,22 @@
     margin-bottom: 8px;
 }
 
+.service-pending {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+}
+
+.service-applied {
+    background: #f0fdf4;
+    border-left: 3px solid #10b981;
+}
+
+.service-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .service-info, .part-info {
     display: flex;
     flex-direction: column;
@@ -586,6 +631,64 @@
 .service-status.status-green { background: #d1fae5; color: #065f46; }
 .service-status.status-yellow { background: #fef3c7; color: #92400e; }
 .service-status.status-red { background: #fee2e2; color: #991b1b; }
+
+.part-status {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.part-status.status-green { background: #d1fae5; color: #065f46; }
+.part-status.status-yellow { background: #fef3c7; color: #92400e; }
+
+.part-pending {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+}
+
+.part-applied {
+    background: #f0fdf4;
+    border-left: 3px solid #10b981;
+}
+
+.part-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.confirm-btn {
+    padding: 6px 12px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.confirm-btn:hover {
+    background: #059669;
+}
+
+.remove-btn {
+    padding: 6px 12px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.remove-btn:hover {
+    background: #dc2626;
+}
 
 .service-price, .part-price {
     font-weight: 600;

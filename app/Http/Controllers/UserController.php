@@ -114,24 +114,31 @@ class UserController extends Controller
             $user->save();
         }
 
-        // Sync roles
-        $user->roles()->detach();
+        // Sync predefined roles (keep custom role)
+        $customRoleSlug = 'custom_' . $user->id;
+        $user->roles()->where('slug', '!=', $customRoleSlug)->detach();
         if (!empty($validated['role'])) {
             $user->assignRole($validated['role']);
         }
 
         // Handle custom permissions
         if (!empty($validated['permissions'])) {
-            $role = Role::where('slug', 'custom_' . $user->id)->first();
+            $role = Role::where('slug', $customRoleSlug)->first();
             if (!$role) {
                 $role = Role::create([
                     'name' => 'Custom for ' . $user->name,
-                    'slug' => 'custom_' . $user->id,
+                    'slug' => $customRoleSlug,
                     'is_system' => false
                 ]);
             }
             $role->permissions()->sync($validated['permissions']);
             $user->roles()->syncWithoutDetaching([$role->id]);
+        } else {
+            // Remove custom role if no custom permissions selected
+            $customRole = Role::where('slug', $customRoleSlug)->first();
+            if ($customRole) {
+                $user->roles()->detach($customRole->id);
+            }
         }
 
         return redirect()->route('users.index')->with('success', 'User updated successfully.');
