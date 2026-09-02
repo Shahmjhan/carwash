@@ -670,6 +670,11 @@ class CashierController extends Controller
             return redirect()->route('cashier.index')->with('error', 'No invoice found for this job.');
         }
 
+        // Calculate balance to return directly from invoice
+        $totalPaid = (float) $job->invoice->paid;
+        $totalDue = (float) $job->invoice->total;
+        $currentBalance = $totalPaid - $totalDue;
+        
         // Get the last payment transaction details from status history
         $lastPayment = $job->statusHistory()
             ->where('to_status', \App\Enums\JobStatus::PAID->value)
@@ -677,16 +682,11 @@ class CashierController extends Controller
             ->first();
 
         $currentPaymentAmount = 0;
-        $currentBalance = 0;
 
         if ($lastPayment && $lastPayment->reason) {
             // Parse the reason to extract payment details
             if (preg_match('/Amount received: Rs\. ([\d.]+)/', $lastPayment->reason, $matches)) {
                 $currentPaymentAmount = floatval($matches[1]);
-            }
-            // Support both old "Balance: Rs. X" and new "Change to return / Balance due" formats
-            if (preg_match('/(?:Balance:|Change to return:|Balance due:) Rs\. ([\d.]+)/', $lastPayment->reason, $matches)) {
-                $currentBalance = floatval($matches[1]);
             }
         }
 

@@ -102,9 +102,7 @@
                 <button onclick="changeStatus('ready_for_payment')" class="action-btn action-cyan">Ready for Payment</button>
                 <button onclick="changeStatus('in_service')" class="action-btn action-blue">Back to Service</button>
             @elseif($job->status->value === \App\Enums\JobStatus::READY_FOR_PAYMENT->value)
-                <button onclick="changeStatus('paid')" class="action-btn action-green">Mark as Paid</button>
-            @elseif($job->status->value === \App\Enums\JobStatus::PAID->value)
-                <button onclick="changeStatus('delivered')" class="action-btn action-green">Deliver Vehicle</button>
+                <div class="info-note">Job is ready for payment. Cashier will handle payment and delivery.</div>
             @elseif($job->status->value === \App\Enums\JobStatus::ON_HOLD->value)
                 <button onclick="changeStatus('checked_in')" class="action-btn action-blue">Resume (Checked In)</button>
                 <button onclick="changeStatus('inspection_completed')" class="action-btn action-purple">Resume (Inspection)</button>
@@ -255,7 +253,34 @@
         </div>
         <div class="modal-body">
             <p>Are you sure you want to change the status to <strong id="newStatusLabel"></strong>?</p>
-            <form id="statusForm" method="post" action="{{ route('jobs.status',$job) }}">
+            
+            <div class="custom-notes-section">
+                <label>Additional Notes (Optional)</label>
+                <textarea id="customNotes" rows="3" placeholder="Add any additional notes for the customer (e.g., specific issues found, recommendations, etc.)"></textarea>
+                <small>This will be included in the WhatsApp message</small>
+            </div>
+
+            <div class="whatsapp-section">
+                @if($job->customer->whatsapp_number)
+                    <label class="whatsapp-toggle">
+                        <input type="checkbox" id="sendWhatsapp" checked>
+                        <span class="slider"></span>
+                        <span class="toggle-label">Send WhatsApp update to customer ({{ $job->customer->whatsapp_number }})</span>
+                    </label>
+                @else
+                    <div class="whatsapp-number-input">
+                        <label>Customer doesn't have WhatsApp number. Add one to send update:</label>
+                        <input type="text" id="customerWhatsappNumber" value="+94" placeholder="+94XXXXXXXXX" oninput="toggleWhatsappCheckbox()" onfocus="this.select()">
+                        <label class="whatsapp-toggle" style="margin-top: 8px;">
+                            <input type="checkbox" id="sendWhatsapp" disabled>
+                            <span class="slider"></span>
+                            <span class="toggle-label">Send WhatsApp update to customer</span>
+                        </label>
+                    </div>
+                @endif
+            </div>
+
+            <form id="statusForm" method="post" action="{{ route('jobs.status',$job) }}" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="status" id="statusInput">
                 <div class="modal-actions">
@@ -744,6 +769,164 @@
     justify-content: flex-end;
 }
 
+.image-upload-section {
+    margin: 20px 0;
+}
+
+.image-upload-section label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.image-upload-area {
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.image-upload-area:hover {
+    border-color: #3b82f6;
+    background: #f9fafb;
+}
+
+.upload-placeholder {
+    cursor: pointer;
+}
+
+.upload-placeholder svg {
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+
+.upload-placeholder span {
+    display: block;
+    color: #374151;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.upload-placeholder small {
+    display: block;
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.image-preview {
+    position: relative;
+    display: inline-block;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 28px;
+    height: 28px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.whatsapp-section {
+    margin: 16px 0;
+    padding: 12px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+}
+
+.whatsapp-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.whatsapp-toggle input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #22c55e;
+}
+
+.whatsapp-toggle .toggle-label {
+    color: #166534;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.whatsapp-number-input {
+    padding: 12px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+}
+
+.whatsapp-number-input label {
+    display: block;
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 8px;
+    font-size: 13px;
+}
+
+.whatsapp-number-input input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.custom-notes-section {
+    margin: 20px 0;
+}
+
+.custom-notes-section label {
+    display: block;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.custom-notes-section textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.custom-notes-section small {
+    display: block;
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 12px;
+}
+
 @media (max-width: 768px) {
     .job-header {
         flex-direction: column;
@@ -798,11 +981,107 @@ function changeStatus(status) {
     document.getElementById('newStatusLabel').textContent = statusLabels[status] || status;
     document.getElementById('statusInput').value = status;
     document.getElementById('statusModal').classList.add('active');
+    
+    // Reset WhatsApp number input if exists
+    const whatsappInput = document.getElementById('customerWhatsappNumber');
+    if (whatsappInput) {
+        whatsappInput.value = '+94';
+        document.getElementById('sendWhatsapp').disabled = true;
+        document.getElementById('sendWhatsapp').checked = false;
+    }
+    
+    // Reset custom notes
+    const notesInput = document.getElementById('customNotes');
+    if (notesInput) {
+        notesInput.value = '';
+    }
+}
+
+function toggleWhatsappCheckbox() {
+    const whatsappInput = document.getElementById('customerWhatsappNumber');
+    const whatsappCheckbox = document.getElementById('sendWhatsapp');
+    
+    if (whatsappInput && whatsappCheckbox) {
+        if (whatsappInput.value.trim().length > 5) {
+            whatsappCheckbox.disabled = false;
+            whatsappCheckbox.checked = true;
+        } else {
+            whatsappCheckbox.disabled = true;
+            whatsappCheckbox.checked = false;
+        }
+    }
 }
 
 function closeStatusModal() {
     document.getElementById('statusModal').classList.remove('active');
+    
+    // Reset WhatsApp number input if exists
+    const whatsappInput = document.getElementById('customerWhatsappNumber');
+    if (whatsappInput) {
+        whatsappInput.value = '+94';
+        document.getElementById('sendWhatsapp').disabled = true;
+        document.getElementById('sendWhatsapp').checked = false;
+    }
+    
+    // Reset custom notes
+    const notesInput = document.getElementById('customNotes');
+    if (notesInput) {
+        notesInput.value = '';
+    }
 }
+
+// Add form data before submission
+document.getElementById('statusForm').addEventListener('submit', function(e) {
+    const formData = new FormData(this);
+    
+    formData.append('send_whatsapp', document.getElementById('sendWhatsapp').checked ? '1' : '0');
+    
+    // Add WhatsApp number if provided
+    const whatsappInput = document.getElementById('customerWhatsappNumber');
+    if (whatsappInput && whatsappInput.value.trim() && whatsappInput.value.trim() !== '+94') {
+        formData.append('customer_whatsapp_number', whatsappInput.value.trim());
+    }
+    
+    // Add custom notes if provided
+    const notesInput = document.getElementById('customNotes');
+    if (notesInput && notesInput.value.trim()) {
+        formData.append('custom_notes', notesInput.value.trim());
+    }
+    
+    // Replace form submission with FormData
+    e.preventDefault();
+    
+    fetch(this.action, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // If WhatsApp URL is provided, open it in new tab
+            if (data.whatsapp_url) {
+                window.open(data.whatsapp_url, '_blank');
+                // Reload page after a delay to allow WhatsApp to open
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                // Reload immediately if no WhatsApp
+                window.location.reload();
+            }
+        } else {
+            alert('Error updating status: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating status');
+    });
+});
 
 function resumeFromHold() {
     const currentStatus = '{{ $job->status->value }}';

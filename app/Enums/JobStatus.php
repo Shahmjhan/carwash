@@ -64,7 +64,7 @@ enum JobStatus: string
             self::WAITING_FOR_PARTS->value => [self::IN_SERVICE, self::ON_HOLD, self::CANCELLED],
             self::IN_SERVICE->value => [self::QUALITY_CHECK, self::ON_HOLD],
             self::QUALITY_CHECK->value => [self::READY_FOR_PAYMENT, self::IN_SERVICE],
-            self::READY_FOR_PAYMENT->value => [self::PAID],
+            self::READY_FOR_PAYMENT->value => [self::PAID], // Cashier can mark as paid
             self::PAID->value => [self::DELIVERED],
             self::DELIVERED->value => [],
             self::CANCELLED->value => [],
@@ -86,7 +86,7 @@ enum JobStatus: string
             self::WAITING_FOR_PARTS->value => [self::IN_SERVICE, self::ON_HOLD, self::CANCELLED],
             self::IN_SERVICE->value => [self::QUALITY_CHECK, self::ON_HOLD],
             self::QUALITY_CHECK->value => [self::READY_FOR_PAYMENT, self::IN_SERVICE],
-            self::READY_FOR_PAYMENT->value => [self::PAID],
+            self::READY_FOR_PAYMENT->value => [self::PAID], // Cashier can mark as paid
             self::PAID->value => [self::DELIVERED],
             self::DELIVERED->value => [],
             self::CANCELLED->value => [],
