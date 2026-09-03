@@ -80,35 +80,31 @@
                 </svg>
                 <h2>Payment Summary</h2>
             </div>
-            
+
             <div class="summary-row">
                 <span>Services Total</span>
-                <span>Rs. {{ number_format($job->services->sum(fn($s) => $s->unit_price * $s->quantity), 2) }}</span>
+                <span>Rs. {{ number_format($calculation['services_total'], 2) }}</span>
             </div>
             <div class="summary-row">
                 <span>Parts Total</span>
-                <span>Rs. {{ number_format($job->parts->sum(fn($p) => $p->unit_price * $p->quantity), 2) }}</span>
+                <span>Rs. {{ number_format($calculation['parts_total'], 2) }}</span>
             </div>
             <div class="summary-row">
                 <span>Subtotal</span>
-                <span>Rs. {{ number_format($job->invoice->subtotal, 2) }}</span>
+                <span>Rs. {{ number_format($calculation['subtotal'], 2) }}</span>
             </div>
             <div class="summary-row">
                 <span>Tax</span>
-                <span>Rs. {{ number_format($job->invoice->tax, 2) }}</span>
+                <span>Rs. {{ number_format($calculation['tax'], 2) }}</span>
             </div>
             <div class="summary-row total-row">
                 <span>Total Due</span>
-                <span class="total-amount">Rs. {{ number_format($job->invoice->total, 2) }}</span>
+                <span class="total-amount">Rs. {{ number_format($calculation['total'], 2) }}</span>
             </div>
-            
+
             <form method="post" action="{{ route('cashier.process-payment', $job) }}" id="paymentForm" onsubmit="updateHiddenFieldsBeforeSubmit()">
                 @csrf
 
-                <input type="hidden" name="discount_type" id="discountTypeHidden" value="none">
-                <input type="hidden" name="discount_value" id="discountValueHidden" value="0">
-                <input type="hidden" name="discount_apply_to" id="discountApplyToHidden" value="total">
-                
                 <div class="form-section">
                     <div class="payment-method-header">
                         <label style="margin: 0; font-size: 16px; font-weight: 600; color: #1e293b;">Payment Method</label>
@@ -118,7 +114,7 @@
                             <span class="toggle-label">Enable Split Payment</span>
                         </label>
                     </div>
-                    
+
                     <div id="singlePaymentSection">
                         <div class="payment-methods">
                             <label class="payment-method-option">
@@ -143,7 +139,7 @@
                             </label>
                         </div>
                     </div>
-                    
+
                     <div id="splitPaymentSection" style="display: none;">
                         <div id="paymentRows">
                             <div class="payment-row" data-row="0">
@@ -161,25 +157,29 @@
                         <button type="button" class="add-row-btn" onclick="addPaymentRow()">+ Add Payment Method</button>
                         <div class="split-summary">
                             <span>Total Split: <strong id="splitTotal">Rs. 0.00</strong></span>
-                            <span>Remaining: <strong id="splitRemaining">Rs. {{ number_format($job->invoice->total, 2) }}</strong></span>
+                            <span>Remaining: <strong id="splitRemaining">Rs. {{ number_format($calculation['total'], 2) }}</strong></span>
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="form-section" id="referenceField" style="display: none;">
                     <label id="referenceLabel">Reference Number</label>
                     <input type="text" name="reference_number" id="referenceNumber" placeholder="Enter reference number">
                 </div>
-                
+
                 <div class="form-section">
                     <label>Coupon/Voucher Code</label>
                     <input type="text" name="coupon_code" id="couponCode" placeholder="Enter coupon code" oninput="applyCoupon()">
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-section">
                         <label>Discount Method</label>
-                        <select id="discountType" onchange="toggleDiscountOptions()">
+                        <select
+                            id="discountType"
+                            name="discount_type"
+                            onchange="toggleDiscountOptions()"
+                        >
                             <option value="none">No Discount</option>
                             <option value="amount">Fixed Amount</option>
                             <option value="percentage">Percentage</option>
@@ -188,7 +188,11 @@
 
                     <div class="form-section" id="applyToSection" style="display: none;">
                         <label>Apply Discount To</label>
-                        <select id="discountApplyTo" onchange="toggleDiscountSection()">
+                        <select
+                            id="discountApplyTo"
+                            name="discount_apply_to"
+                            onchange="toggleDiscountSection()"
+                        >
                             <option value="total">Total Amount</option>
                             <option value="services">Services Only</option>
                             <option value="parts">Parts Only</option>
@@ -201,7 +205,15 @@
                 <div class="form-section" id="globalDiscountSection" style="display: none;">
                     <label id="discountValueLabel">Discount Amount</label>
                     <div style="position: relative;">
-                        <input type="number" step=".01" min="0" id="discountValue" placeholder="0.00" oninput="calculateTotal()">
+                        <input
+                            type="number"
+                            step=".01"
+                            min="0"
+                            id="discountValue"
+                            name="discount_value"
+                            placeholder="0.00"
+                            oninput="calculateTotal()"
+                        >
                         <span id="discountValueSuffix" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);color:#64748b;font-weight:600;display:none;">%</span>
                     </div>
                 </div>
@@ -245,23 +257,23 @@
                         </div>
                     @endforeach
                 </div>
-                
+
                 <div class="form-section">
                     <label>Amount Received</label>
                     <input type="number" step=".01" name="amount_received" id="amountReceived" placeholder="Enter amount received" required oninput="calculateBalance()" onwheel="this.blur()">
                 </div>
-                
+
                 <div class="balance-card" id="balanceDisplay" style="display: none;">
                     <div class="balance-content">
                         <span>Balance to Return</span>
                         <span id="balanceAmount">Rs. 0.00</span>
                     </div>
                 </div>
-                
+
                 <div class="live-summary">
                     <div class="summary-row">
                         <span>Subtotal</span>
-                        <strong>Rs. {{ number_format($job->invoice->subtotal, 2) }}</strong>
+                        <strong>Rs. {{ number_format($calculation['subtotal'], 2) }}</strong>
                     </div>
                     <div class="summary-row" id="discountRow">
                         <span>Discount</span>
@@ -269,7 +281,7 @@
                     </div>
                     <div class="summary-row">
                         <span>Total Due</span>
-                        <strong id="displayTotal">Rs. {{ number_format($job->invoice->total, 2) }}</strong>
+                        <strong id="displayTotal">Rs. {{ number_format($calculation['total'], 2) }}</strong>
                     </div>
                     <div class="summary-row">
                         <span>Amount Received</span>
@@ -277,10 +289,10 @@
                     </div>
                     <div class="summary-row final-row">
                         <span>Balance</span>
-                        <strong id="displayBalance">Rs. {{ number_format($job->invoice->total, 2) }}</strong>
+                        <strong id="displayBalance">Rs. {{ number_format($calculation['total'], 2) }}</strong>
                     </div>
                 </div>
-                
+
                 <button type="submit" class="process-button">
                     <span>Process Payment</span>
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,18 +345,16 @@
     margin: 0;
 }
 
-/* ===== MAIN GRID ===== */
+/* ===== MAIN GRID (DESKTOP) ===== */
 .payment-content {
     padding: 40px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     max-width: 1400px;
     margin: 0 auto;
 }
 
-/* Parts Used + Payment form always take the full row */
-.parts-card,
 .payment-card {
     grid-column: 1 / -1;
 }
@@ -739,7 +749,6 @@
     margin-top: 24px;
 }
 
-/* Back button below Process Payment */
 .payment-back {
     margin-top: 16px;
     display: flex;
@@ -766,7 +775,7 @@
     color: #334155;
 }
 
-/* ========== RESPONSIVE ========== */
+/* ========== RESPONSIVE (UNCHANGED) ========== */
 @media (max-width: 768px) {
     .payment-header {
         padding: 20px 16px;
@@ -782,6 +791,7 @@
 
     .payment-content {
         padding: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
     }
 
     .glass-card {
@@ -886,11 +896,11 @@
 </style>
 
 <script>
-const originalTotal = {{ $job->invoice ? $job->invoice->total : 0 }};
-const subtotal = {{ $job->invoice ? $job->invoice->subtotal : 0 }};
-const servicesTotal = {{ $job->services->sum(fn($s) => $s->unit_price * $s->quantity) }};
-const partsTotal = {{ $job->parts->sum(fn($p) => $p->unit_price * $p->quantity) }};
-const tax = {{ $job->invoice ? $job->invoice->tax : 0 }};
+const originalTotal = {{ $calculation['total'] }};
+const subtotal = {{ $calculation['subtotal'] }};
+const servicesTotal = {{ $calculation['services_total'] }};
+const partsTotal = {{ $calculation['parts_total'] }};
+const tax = {{ $calculation['tax'] }};
 let currentTotal = originalTotal;
 let rowCounter = 1;
 
@@ -898,7 +908,7 @@ function toggleReferenceField() {
     const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
     const referenceField = document.getElementById('referenceField');
     const referenceLabel = document.getElementById('referenceLabel');
-    
+
     if (paymentMethod === 'cash') {
         referenceField.style.display = 'none';
     } else if (paymentMethod === 'card') {
@@ -920,22 +930,17 @@ function updateHiddenFieldsBeforeSubmit() {
     const discountType = document.getElementById('discountType').value;
     const discountApplyTo = document.getElementById('discountApplyTo').value;
 
-    document.getElementById('discountTypeHidden').value = discountType;
-    document.getElementById('discountApplyToHidden').value = discountApplyTo;
-
     if (discountType === 'none') {
-        document.getElementById('discountValueHidden').value = '0';
-        document.getElementById('discountApplyToHidden').value = 'total';
+        document.getElementById('discountValue').value = '0';
         return;
     }
 
-    if (discountApplyTo === 'individual_services' || discountApplyTo === 'individual_parts') {
+    if (
+        discountApplyTo === 'individual_services' ||
+        discountApplyTo === 'individual_parts'
+    ) {
         calculateIndividualDiscounts();
-        return;
     }
-
-    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
-    document.getElementById('discountValueHidden').value = discountValue;
 }
 
 function toggleDiscountOptions() {
@@ -950,12 +955,9 @@ function toggleDiscountOptions() {
     individualServicesSection.style.display = 'none';
     individualPartsSection.style.display = 'none';
 
-    document.getElementById('discountTypeHidden').value = discountType;
-
     if (discountType === 'none') {
         document.getElementById('discountValue').value = '';
-        document.getElementById('discountValueHidden').value = '0';
-        document.getElementById('discountApplyToHidden').value = 'total';
+        document.getElementById('discountApplyTo').value = 'total';
         resetDiscountDisplay();
         return;
     }
@@ -974,8 +976,6 @@ function toggleDiscountSection() {
     globalDiscountSection.style.display = 'none';
     individualServicesSection.style.display = 'none';
     individualPartsSection.style.display = 'none';
-
-    document.getElementById('discountApplyToHidden').value = discountApplyTo;
 
     if (discountApplyTo === 'individual_services') {
         individualServicesSection.style.display = 'block';
@@ -1047,11 +1047,9 @@ function calculateTotal() {
         return;
     }
 
-    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
-
-    document.getElementById('discountTypeHidden').value = discountType;
-    document.getElementById('discountValueHidden').value = discountValue;
-    document.getElementById('discountApplyToHidden').value = discountApplyTo;
+    const discountValue = parseFloat(
+        document.getElementById('discountValue').value
+    ) || 0;
 
     let discountBase = subtotal;
     if (discountApplyTo === 'services') discountBase = servicesTotal;
@@ -1076,8 +1074,6 @@ function calculateIndividualDiscounts() {
     const discountApplyTo = document.getElementById('discountApplyTo').value;
 
     let totalDiscount = 0;
-    document.getElementById('discountTypeHidden').value = discountType;
-    document.getElementById('discountApplyToHidden').value = discountApplyTo;
 
     let selector = '';
     if (discountApplyTo === 'individual_services') selector = '.item-discount-value[data-item-type="service"]';
@@ -1098,7 +1094,6 @@ function calculateIndividualDiscounts() {
         totalDiscount += itemDiscount;
     });
 
-    document.getElementById('discountValueHidden').value = totalDiscount;
     currentTotal = Math.max(0, (subtotal - totalDiscount) + tax);
 
     document.getElementById('displayDiscount').textContent = 'Rs. ' + totalDiscount.toFixed(2);
@@ -1107,11 +1102,10 @@ function calculateIndividualDiscounts() {
 }
 
 function resetDiscountDisplay() {
-    document.getElementById('discountValueHidden').value = '0';
-    document.getElementById('discountApplyToHidden').value = 'total';
     currentTotal = originalTotal;
     document.getElementById('displayDiscount').textContent = 'Rs. 0.00';
-    document.getElementById('displayTotal').textContent = 'Rs. ' + currentTotal.toFixed(2);
+    document.getElementById('displayTotal').textContent =
+        'Rs. ' + currentTotal.toFixed(2);
     calculateBalance();
 }
 
@@ -1121,7 +1115,7 @@ function toggleSplitPayment() {
     const splitSection = document.getElementById('splitPaymentSection');
     const referenceField = document.getElementById('referenceField');
     const amountReceived = document.getElementById('amountReceived');
-    
+
     if (splitToggle.checked) {
         singleSection.style.display = 'none';
         splitSection.style.display = 'block';
@@ -1176,7 +1170,7 @@ function updateSplitReference(select) {
     const row = select.closest('.payment-row');
     const referenceInput = row.querySelector('.split-reference');
     const method = select.value;
-    
+
     if (method === 'cash') {
         referenceInput.style.display = 'none';
     } else {
@@ -1192,10 +1186,10 @@ function calculateSplitTotal() {
     document.querySelectorAll('.split-amount').forEach(input => {
         total += parseFloat(input.value) || 0;
     });
-    
+
     document.getElementById('splitTotal').textContent = 'Rs. ' + total.toFixed(2);
     document.getElementById('splitRemaining').textContent = 'Rs. ' + Math.max(0, currentTotal - total).toFixed(2);
-    
+
     document.getElementById('amountReceived').value = total;
     calculateBalance();
 }
@@ -1207,13 +1201,13 @@ function applyCoupon() {
 function calculateBalance() {
     const amountReceived = parseFloat(document.getElementById('amountReceived').value) || 0;
     const balance = amountReceived - currentTotal;
-    
+
     document.getElementById('displayReceived').textContent = 'Rs. ' + amountReceived.toFixed(2);
     document.getElementById('displayBalance').textContent = 'Rs. ' + Math.abs(balance).toFixed(2);
-    
+
     const balanceDisplay = document.getElementById('balanceDisplay');
     const balanceAmount = document.getElementById('balanceAmount');
-    
+
     if (amountReceived > 0) {
         balanceDisplay.style.display = 'block';
         if (balance >= 0) {

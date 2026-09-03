@@ -85,10 +85,6 @@ class PricingService
         $parts = [];
         
         foreach ($job->parts as $jobPart) {
-            if (!$jobPart->approved) {
-                continue;
-            }
-            
             $lineTotal = $jobPart->quantity * $jobPart->unit_price;
             $total += $lineTotal;
             

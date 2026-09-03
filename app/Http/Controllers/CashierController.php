@@ -4,11 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Job;
 use App\Enums\JobStatus;
+use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CashierController extends Controller
 {
+    public function __construct(
+        private PricingService $pricing
+    ) {}
+
     public function index()
     {
         $readyForPayment = Job::with(['customer', 'vehicle', 'invoice'])
@@ -40,9 +45,17 @@ class CashierController extends Controller
 
     public function payment(Job $job)
     {
-        $job->load(['customer', 'vehicle', 'services.service', 'parts.product', 'invoice']);
-        
-        return view('cashier.payment', compact('job'));
+        $job->load([
+            'customer',
+            'vehicle',
+            'services.service',
+            'parts.product',
+            'invoice'
+        ]);
+
+        $calculation = $this->pricing->calculateFinalInvoice($job->id);
+
+        return view('cashier.payment', compact('job', 'calculation'));
     }
 
     public function processPayment(Request $request, Job $job)
@@ -80,8 +93,10 @@ class CashierController extends Controller
 
         $amountReceived = (float) $request->amount_received;
 
-        $subtotal = (float) $invoice->subtotal;
-        $tax = (float) $invoice->tax;
+        $calculation = $this->pricing->calculateFinalInvoice($job->id);
+
+        $subtotal = (float) $calculation['subtotal'];
+        $tax = (float) $calculation['tax'];
 
         $discountType =
             $request->input('discount_type', 'none');

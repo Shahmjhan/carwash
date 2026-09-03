@@ -270,6 +270,8 @@ class JobController extends Controller
             'applied' => false,
         ]);
 
+        $this->syncJobInvoice($job);
+
         return back()->with('success', 'Part added. Please confirm to apply.');
     }
 
@@ -288,6 +290,8 @@ class JobController extends Controller
         }
 
         $part->delete();
+
+        $this->syncJobInvoice($job);
 
         return response()->json(['success' => true, 'message' => 'Part closed successfully']);
     }
@@ -339,5 +343,85 @@ class JobController extends Controller
         $job->delete();
 
         return redirect()->route('jobs.index')->with('success', 'Job deleted.');
+    }
+
+    /**
+     * Recalculate the job's invoice from current services + parts and
+     * keep invoice header totals and invoice_items in sync.
+     *
+     * No-ops if the job doesn't have an invoice yet (i.e. it hasn't
+     * reached READY_FOR_PAYMENT / InvoiceService::generate() hasn't run).
+     */
+    private function syncJobInvoice(Job $job): void
+    {
+        $job->loadMissing('invoice');
+
+        if (!$job->invoice) {
+            return;
+        }
+
+        $calculation = $this->pricing->calculateFinalInvoice($job->id);
+
+        $invoice = $job->invoice;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update invoice totals
+        |--------------------------------------------------------------------------
+        */
+
+        $invoice->update([
+            'subtotal' => $calculation['subtotal'],
+            'discount' => $calculation['discount'] + $calculation['membership_discount'],
+            'tax'      => $calculation['tax'],
+            'total'    => $calculation['total'],
+            'balance'  => $calculation['total'] - (float) $invoice->paid,
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Rebuild invoice items
+        |--------------------------------------------------------------------------
+        */
+
+        $invoice->items()->delete();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Services
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($calculation['breakdown']['services'] as $service) {
+            $invoice->items()->create([
+                'item_type'   => 'service',
+                'item_id'     => $service['id'],
+                'description' => $service['name'],
+                'quantity'    => $service['quantity'],
+                'unit_price'  => $service['unit_price'],
+                'discount'    => $service['discount'],
+                'tax'         => $service['tax'],
+                'line_total'  => $service['line_total'],
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Parts
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($calculation['breakdown']['parts'] as $part) {
+            $invoice->items()->create([
+                'item_type'   => 'part',
+                'item_id'     => $part['id'],
+                'description' => $part['product_name'],
+                'quantity'    => $part['quantity'],
+                'unit_price'  => $part['unit_price'],
+                'discount'    => 0,
+                'tax'         => 0,
+                'line_total'  => $part['line_total'],
+            ]);
+        }
     }
 }
