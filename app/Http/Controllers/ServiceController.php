@@ -16,7 +16,7 @@ class ServiceController extends Controller
 
     public function create()
     {
-        $categories = ServiceCategory::where('active', true)->orderBy('name')->get();
+        $categories = ServiceCategory::orderBy('name')->get();
         return view('services.create', compact('categories'));
     }
 
@@ -49,7 +49,7 @@ class ServiceController extends Controller
 
     public function edit(Service $service)
     {
-        $categories = ServiceCategory::where('active', true)->orderBy('name')->get();
+        $categories = ServiceCategory::orderBy('name')->get();
         return view('services.edit', compact('service', 'categories'));
     }
 

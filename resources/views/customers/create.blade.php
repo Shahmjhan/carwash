@@ -1,1 +1,53 @@
-@extends('layouts.app') @section('content')<div class="page-head"><div><h1>New Customer</h1></div></div><div class="panel form-panel"><form method="post" action="{{ route('customers.store') }}">@csrf<div class="form-grid"><label>Full name*<input name="full_name" required></label><label>Phone*<input name="phone" required></label><label>WhatsApp Number<input name="whatsapp_number" placeholder="+94XXXXXXXXX"></label><label>NIC / Passport<input name="nic"></label></div><button class="primary">Create Customer</button></form></div>@endsection
+@extends('layouts.app')
+
+@section('content')
+<div class="page-head">
+    <div>
+        <h1>New Customer</h1>
+    </div>
+</div>
+
+<div class="panel form-panel">
+    <form method="post" action="{{ route('customers.store') }}">
+        @csrf
+        <div class="form-grid">
+            <label>
+                Full name*
+                <input name="full_name" required>
+            </label>
+            <label>
+                Phone*
+                <input name="phone" required>
+            </label>
+            <label>
+                WhatsApp Number
+                <input name="whatsapp_number" placeholder="+94XXXXXXXXX">
+            </label>
+            <label>
+                NIC / Passport
+                <input name="nic">
+            </label>
+        </div>
+        <button class="primary">Create Customer</button>
+    </form>
+</div>
+
+<style>
+.form-panel .form-grid label {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.form-panel .form-grid input,
+.form-panel .form-grid select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 14px;
+    border-radius: 12px;
+    margin-top: 6px;
+}
+</style>
+@endsection

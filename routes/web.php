@@ -16,6 +16,7 @@ use App\Http\Controllers\CashierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReceptionController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceCategoryController;
 
 Route::get('/', function(){
     if(!auth()->check()) return redirect()->route('login');
@@ -87,4 +88,6 @@ Route::delete('/jobs/{job}/services/{service}/remove',[JobController::class,'rem
  Route::post('/settings/billing',[SettingsController::class,'updateBilling'])->name('settings.billing.update')->middleware('permission:edit_billing_settings');
  Route::post('/settings/reception',[SettingsController::class,'updateReception'])->name('settings.reception.update')->middleware('permission:edit_billing_settings');
  Route::resource('users',UserController::class)->middleware('permission:view_users');
+ Route::post('/service-categories', [ServiceCategoryController::class, 'store'])
+    ->name('service-categories.store');
 });
