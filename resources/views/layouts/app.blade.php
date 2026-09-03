@@ -185,10 +185,10 @@
             </div>
         </header>
         @if(session('success'))
-            <div class="toast success">{{ session('success') }}</div>
+            <div class="toast success" id="appToast">{{ session('success') }}</div>
         @endif
         @if($errors->any())
-            <div class="toast error">{{ $errors->first() }}</div>
+            <div class="toast error" id="appToast">{{ $errors->first() }}</div>
         @endif
         <div class="content">
             @yield('content')
@@ -276,6 +276,15 @@
 
         // Initial state
         updateSidebarToggle();
+
+        // Auto-dismiss toast notification without shifting layout
+        const appToast = document.getElementById('appToast');
+        if (appToast) {
+            setTimeout(() => {
+                appToast.classList.add('toast-hide');
+                setTimeout(() => appToast.remove(), 300);
+            }, 3500);
+        }
     </script>
 
     <style>
@@ -601,6 +610,56 @@
             }
             50% {
                 transform: scale(1.1);
+            }
+        }
+
+        /* Toast notifications: fixed overlay so they never push page content down */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100001;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            max-width: 360px;
+            animation: toastIn 0.3s ease;
+        }
+
+        .toast.toast-hide {
+            animation: toastOut 0.3s ease forwards;
+        }
+
+        .toast.success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .toast.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(20px); }
+        }
+
+        @media (max-width: 640px) {
+            .toast {
+                left: 16px;
+                right: 16px;
+                max-width: none;
+                top: 12px;
             }
         }
     </style>

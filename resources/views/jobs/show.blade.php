@@ -180,13 +180,19 @@
             </div>
             <div class="add-service-form">
                 <h4>Add Service</h4>
-                <form class="inline-form" method="post" action="{{ route('jobs.additional-work',$job) }}">
+                @php
+                    $addedServiceIds = $job->services->pluck('service_id')->toArray();
+                    $availableServices = $services->whereNotIn('id', $addedServiceIds);
+                @endphp
+                <form class="inline-form" method="post" action="{{ route('jobs.services.add', $job) }}">
                     @csrf
-                    <select name="service_id" class="responsive-select">
+                    <select name="service_id" class="responsive-select" required>
                         <option value="">Select Service</option>
-                        @foreach($services as $s)
+                        @forelse($availableServices as $s)
                             <option value="{{ $s->id }}">{{ $s->name }} — Rs. {{ number_format($s->base_price,2) }}</option>
-                        @endforeach
+                        @empty
+                            <option value="" disabled>All services already added</option>
+                        @endforelse
                     </select>
                     <button type="submit">Add</button>
                 </form>
@@ -228,17 +234,23 @@
             </div>
             <div class="add-part-form">
                 <h4>Consume Part</h4>
+                @php
+                    $pendingProductIds = $job->parts->where('applied', false)->pluck('product_id')->toArray();
+                    $availableProducts = $products->whereNotIn('id', $pendingProductIds);
+                @endphp
                 <form class="inline-form" method="post" action="{{ route('jobs.consume-part',$job) }}">
                     @csrf
                     <select name="product_id" id="productSelect" class="responsive-select" onchange="updateSellingPrice(); updateStockInfo()">
                         <option value="">Select Product</option>
-                        @foreach($products as $p)
+                        @forelse($availableProducts as $p)
                             @php
                                 $inventory = \App\Models\Inventory::where('product_id', $p->id)->where('branch_id', $job->branch_id)->first();
                                 $availableStock = $inventory ? $inventory->quantity : 0;
                             @endphp
                             <option value="{{ $p->id }}" data-price="{{ $p->selling_price }}" data-stock="{{ $availableStock }}">{{ $p->name }} (Stock: {{ $availableStock }})</option>
-                        @endforeach
+                        @empty
+                            <option value="" disabled>All products already pending</option>
+                        @endforelse
                     </select>
                     <input name="quantity" type="number" step=".001" value="1" min="0.001" placeholder="Qty">
                     <input name="unit_price" type="number" step=".01" placeholder="Price" id="unitPriceInput">
