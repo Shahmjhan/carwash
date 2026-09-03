@@ -16,6 +16,7 @@ use App\Http\Controllers\CashierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ReceptionController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceCategoryController;
 
 Route::get('/', function(){
     if(!auth()->check()) return redirect()->route('login');
@@ -60,6 +61,7 @@ Route::post('/jobs/{job}/parts/{part}/apply',[JobController::class,'applyPart'])
 Route::delete('/jobs/{job}/parts/{part}/remove',[JobController::class,'removePart'])->name('jobs.parts.remove')->middleware('permission:consume_parts_job_cards');
 Route::post('/jobs/{job}/services/{service}/apply',[JobController::class,'applyService'])->name('jobs.services.apply')->middleware('permission:consume_parts_job_cards');
 Route::delete('/jobs/{job}/services/{service}/remove',[JobController::class,'removeService'])->name('jobs.services.remove')->middleware('permission:consume_parts_job_cards');
+Route::post('/jobs/{job}/services',[JobController::class,'addService'])->name('jobs.services.add')->middleware('permission:consume_parts_job_cards');
  Route::resource('inventory',InventoryController::class)->except(['show'])->parameters(['inventory'=>'product'])->middleware('permission:view_item_master');
  Route::post('/inventory/{product}/adjust',[InventoryController::class,'adjust'])->name('inventory.adjust')->middleware('permission:adjust_stock_item_master');
  Route::resource('categories',CategoryController::class)->middleware('permission:view_categories');
@@ -87,4 +89,6 @@ Route::delete('/jobs/{job}/services/{service}/remove',[JobController::class,'rem
  Route::post('/settings/billing',[SettingsController::class,'updateBilling'])->name('settings.billing.update')->middleware('permission:edit_billing_settings');
  Route::post('/settings/reception',[SettingsController::class,'updateReception'])->name('settings.reception.update')->middleware('permission:edit_billing_settings');
  Route::resource('users',UserController::class)->middleware('permission:view_users');
+ Route::post('/service-categories', [ServiceCategoryController::class, 'store'])
+    ->name('service-categories.store');
 });

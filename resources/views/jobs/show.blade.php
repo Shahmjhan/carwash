@@ -1,4 +1,5 @@
 @extends('layouts.app')
+
 @section('content')
 <div class="job-detail-container">
     <!-- Header Section -->
@@ -48,11 +49,9 @@
                     @endif
                     <div class="step-indicator">
                         @if($isCompleted)
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                        @elseif($isCurrent)
-                            <div class="step-pulse"></div>
                         @else
                             <div class="step-number">{{ $stepIndex + 1 }}</div>
                         @endif
@@ -181,13 +180,19 @@
             </div>
             <div class="add-service-form">
                 <h4>Add Service</h4>
-                <form class="inline-form" method="post" action="{{ route('jobs.additional-work',$job) }}">
+                @php
+                    $addedServiceIds = $job->services->pluck('service_id')->toArray();
+                    $availableServices = $services->whereNotIn('id', $addedServiceIds);
+                @endphp
+                <form class="inline-form" method="post" action="{{ route('jobs.services.add', $job) }}">
                     @csrf
-                    <select name="service_id">
+                    <select name="service_id" class="responsive-select" required>
                         <option value="">Select Service</option>
-                        @foreach($services as $s)
+                        @forelse($availableServices as $s)
                             <option value="{{ $s->id }}">{{ $s->name }} — Rs. {{ number_format($s->base_price,2) }}</option>
-                        @endforeach
+                        @empty
+                            <option value="" disabled>All services already added</option>
+                        @endforelse
                     </select>
                     <button type="submit">Add</button>
                 </form>
@@ -229,17 +234,23 @@
             </div>
             <div class="add-part-form">
                 <h4>Consume Part</h4>
+                @php
+                    $pendingProductIds = $job->parts->where('applied', false)->pluck('product_id')->toArray();
+                    $availableProducts = $products->whereNotIn('id', $pendingProductIds);
+                @endphp
                 <form class="inline-form" method="post" action="{{ route('jobs.consume-part',$job) }}">
                     @csrf
-                    <select name="product_id" id="productSelect" onchange="updateSellingPrice(); updateStockInfo()">
+                    <select name="product_id" id="productSelect" class="responsive-select" onchange="updateSellingPrice(); updateStockInfo()">
                         <option value="">Select Product</option>
-                        @foreach($products as $p)
+                        @forelse($availableProducts as $p)
                             @php
                                 $inventory = \App\Models\Inventory::where('product_id', $p->id)->where('branch_id', $job->branch_id)->first();
                                 $availableStock = $inventory ? $inventory->quantity : 0;
                             @endphp
                             <option value="{{ $p->id }}" data-price="{{ $p->selling_price }}" data-stock="{{ $availableStock }}">{{ $p->name }} (Stock: {{ $availableStock }})</option>
-                        @endforeach
+                        @empty
+                            <option value="" disabled>All products already pending</option>
+                        @endforelse
                     </select>
                     <input name="quantity" type="number" step=".001" value="1" min="0.001" placeholder="Qty">
                     <input name="unit_price" type="number" step=".01" placeholder="Price" id="unitPriceInput">
@@ -256,21 +267,22 @@
                 {{ $job->notes ?: 'No notes added' }}
             </div>
         </div>
+
+        <!-- Back button -->
+        <div class="back-button-cell">
+            <a href="javascript:history.back()" class="btn-back">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back
+            </a>
+        </div>
     </div>
 
-    <!-- Invoice Link -->
     @if($job->invoice)
         <div class="invoice-link">
-            <a href="{{ route('invoices.show',$job->invoice) }}" class="btn-primary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                View Invoice
-            </a>
+            <a href="{{ route('invoices.show',$job->invoice) }}" class="btn-primary">View Invoice</a>
         </div>
     @endif
 </div>
@@ -287,7 +299,7 @@
             
             <div class="custom-notes-section">
                 <label>Additional Notes (Optional)</label>
-                <textarea id="customNotes" rows="3" placeholder="Add any additional notes for the customer (e.g., specific issues found, recommendations, etc.)"></textarea>
+                <textarea id="customNotes" rows="3" placeholder="Add any additional notes for the customer"></textarea>
                 <small>This will be included in the WhatsApp message</small>
             </div>
 
@@ -295,23 +307,21 @@
                 @if($job->customer->whatsapp_number)
                     <label class="whatsapp-toggle">
                         <input type="checkbox" id="sendWhatsapp">
-                        <span class="slider"></span>
                         <span class="toggle-label">Send WhatsApp update to customer ({{ $job->customer->whatsapp_number }})</span>
                     </label>
                 @else
                     <div class="whatsapp-number-input">
                         <label>Customer doesn't have WhatsApp number. Add one to send update:</label>
-                        <input type="text" id="customerWhatsappNumber" value="+94" placeholder="+94XXXXXXXXX" oninput="toggleWhatsappCheckbox()" onfocus="this.select()">
+                        <input type="text" id="customerWhatsappNumber" value="+94" placeholder="+94XXXXXXXXX" oninput="toggleWhatsappCheckbox()">
                         <label class="whatsapp-toggle" style="margin-top: 8px;">
                             <input type="checkbox" id="sendWhatsapp" disabled>
-                            <span class="slider"></span>
                             <span class="toggle-label">Send WhatsApp update to customer</span>
                         </label>
                     </div>
                 @endif
             </div>
 
-            <form id="statusForm" method="post" action="{{ route('jobs.status',$job) }}" enctype="multipart/form-data">
+            <form id="statusForm" method="post" action="{{ route('jobs.status',$job) }}">
                 @csrf
                 <input type="hidden" name="status" id="statusInput">
                 <div class="modal-actions">
@@ -341,6 +351,7 @@
 </div>
 
 <style>
+/* ========== DESKTOP ========== */
 .job-detail-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -357,6 +368,7 @@
     border-radius: 16px;
     color: white;
     box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    animation: fadeInDown 0.5s ease;
 }
 
 .job-info h1 {
@@ -373,10 +385,6 @@
     opacity: 0.9;
 }
 
-.separator {
-    opacity: 0.5;
-}
-
 .status-badge {
     padding: 10px 20px;
     border-radius: 24px;
@@ -384,6 +392,17 @@
     font-size: 14px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    animation: pulseBadge 2s infinite;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseBadge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
 }
 
 .status-blue { background: #3b82f6; color: white; }
@@ -442,7 +461,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14px;
     transition: all 0.3s ease;
 }
@@ -455,6 +474,7 @@
 .workflow-step.current .step-indicator {
     background: #3b82f6;
     color: white;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
 }
 
 .workflow-step.future .step-indicator {
@@ -462,21 +482,9 @@
     color: #9ca3af;
 }
 
-.step-pulse {
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-}
-
 .step-number {
     color: inherit;
+    font-weight: 700;
 }
 
 .step-label {
@@ -486,14 +494,8 @@
     color: #4b5563;
 }
 
-.workflow-step.completed .step-label {
-    color: #10b981;
-}
-
-.workflow-step.current .step-label {
-    color: #3b82f6;
-    font-weight: 600;
-}
+.workflow-step.completed .step-label { color: #10b981; }
+.workflow-step.current .step-label { color: #3b82f6; font-weight: 600; }
 
 .quick-actions {
     background: white;
@@ -532,7 +534,6 @@
 }
 
 .action-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-.action-green { background: linear-gradient(135deg, #10b981, #059669); }
 .action-yellow { background: linear-gradient(135deg, #f59e0b, #d97706); }
 .action-orange { background: linear-gradient(135deg, #f97316, #ea580c); }
 .action-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
@@ -591,17 +592,9 @@
     text-decoration: none;
 }
 
-.info-value a:hover {
-    text-decoration: underline;
-}
-
 .priority-high { color: #ef4444; }
 .priority-medium { color: #f59e0b; }
 .priority-low { color: #10b981; }
-
-.services-list, .parts-list {
-    margin-bottom: 20px;
-}
 
 .service-item, .part-item {
     display: flex;
@@ -613,17 +606,12 @@
     margin-bottom: 8px;
 }
 
-.service-pending {
-    background: #fffbeb;
-    border-left: 3px solid #f59e0b;
-}
+.service-pending { background: #fffbeb; border-left: 3px solid #f59e0b; }
+.service-applied { background: #f0fdf4; border-left: 3px solid #10b981; }
+.part-pending { background: #fffbeb; border-left: 3px solid #f59e0b; }
+.part-applied { background: #f0fdf4; border-left: 3px solid #10b981; }
 
-.service-applied {
-    background: #f0fdf4;
-    border-left: 3px solid #10b981;
-}
-
-.service-actions {
+.service-actions, .part-actions {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -640,42 +628,16 @@
     color: #1f2937;
 }
 
-.service-status {
+.service-status, .part-status {
     font-size: 12px;
     padding: 2px 8px;
     border-radius: 4px;
     font-weight: 600;
 }
 
-.service-status.status-green { background: #d1fae5; color: #065f46; }
-.service-status.status-yellow { background: #fef3c7; color: #92400e; }
+.service-status.status-green, .part-status.status-green { background: #d1fae5; color: #065f46; }
+.service-status.status-yellow, .part-status.status-yellow { background: #fef3c7; color: #92400e; }
 .service-status.status-red { background: #fee2e2; color: #991b1b; }
-
-.part-status {
-    font-size: 12px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-.part-status.status-green { background: #d1fae5; color: #065f46; }
-.part-status.status-yellow { background: #fef3c7; color: #92400e; }
-
-.part-pending {
-    background: #fffbeb;
-    border-left: 3px solid #f59e0b;
-}
-
-.part-applied {
-    background: #f0fdf4;
-    border-left: 3px solid #10b981;
-}
-
-.part-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
 
 .confirm-btn {
     padding: 6px 12px;
@@ -686,27 +648,6 @@
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
-    transition: background 0.2s;
-}
-
-.confirm-btn:hover {
-    background: #059669;
-}
-
-.remove-btn {
-    padding: 6px 12px;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: background 0.2s;
-}
-
-.remove-btn:hover {
-    background: #dc2626;
 }
 
 .close-btn {
@@ -716,43 +657,9 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 12px;
-    transition: background 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-.close-btn:hover {
-    background: #dc2626;
-}
-
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 16px 24px;
-    border-radius: 8px;
-    color: white;
-    font-weight: 600;
-    z-index: 10000;
-    opacity: 0;
-    transform: translateY(-20px);
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.notification.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.notification-success {
-    background: #10b981;
-}
-
-.notification-error {
-    background: #ef4444;
 }
 
 .service-price, .part-price {
@@ -795,6 +702,7 @@
     border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 14px;
+    box-sizing: border-box;
 }
 
 .inline-form select {
@@ -814,11 +722,12 @@
     border-radius: 6px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.3s ease;
 }
 
-.inline-form button:hover {
-    background: #2563eb;
+.responsive-select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .stock-warning {
@@ -838,8 +747,36 @@
     white-space: pre-wrap;
 }
 
+/* Back button cell - aligns bottom with Notes card */
+.back-button-cell {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    min-height: 0;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+    background: #d1d5db;
+    color: #111827;
+}
+
 .invoice-link {
     text-align: center;
+    margin-top: 16px;
 }
 
 .btn-primary {
@@ -852,12 +789,6 @@
     text-decoration: none;
     border-radius: 10px;
     font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .btn-secondary {
@@ -868,11 +799,6 @@
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-.btn-secondary:hover {
-    background: #d1d5db;
 }
 
 .modal {
@@ -911,7 +837,6 @@
 .modal-header h3 {
     margin: 0;
     font-size: 18px;
-    color: #1f2937;
 }
 
 .modal-close {
@@ -922,97 +847,10 @@
     color: #9ca3af;
 }
 
-.modal-close:hover {
-    color: #1f2937;
-}
-
-.modal-body p {
-    margin: 0 0 20px 0;
-    color: #4b5563;
-}
-
 .modal-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-}
-
-.image-upload-section {
-    margin: 20px 0;
-}
-
-.image-upload-section label {
-    display: block;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
-
-.image-upload-area {
-    border: 2px dashed #d1d5db;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    transition: all 0.3s ease;
-}
-
-.image-upload-area:hover {
-    border-color: #3b82f6;
-    background: #f9fafb;
-}
-
-.upload-placeholder {
-    cursor: pointer;
-}
-
-.upload-placeholder svg {
-    color: #9ca3af;
-    margin-bottom: 8px;
-}
-
-.upload-placeholder span {
-    display: block;
-    color: #374151;
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-.upload-placeholder small {
-    display: block;
-    color: #6b7280;
-    font-size: 12px;
-}
-
-.image-preview {
-    position: relative;
-    display: inline-block;
-}
-
-.image-preview img {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 8px;
-    object-fit: cover;
-}
-
-.remove-image-btn {
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    width: 28px;
-    height: 28px;
-    background: #ef4444;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .whatsapp-section {
@@ -1031,38 +869,9 @@
 }
 
 .whatsapp-toggle input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     accent-color: #22c55e;
-}
-
-.whatsapp-toggle .toggle-label {
-    color: #166534;
-    font-weight: 500;
-    font-size: 14px;
-}
-
-.whatsapp-number-input {
-    padding: 12px;
-    background: #fef3c7;
-    border: 1px solid #fcd34d;
-    border-radius: 8px;
-}
-
-.whatsapp-number-input label {
-    display: block;
-    font-weight: 600;
-    color: #92400e;
-    margin-bottom: 8px;
-    font-size: 13px;
-}
-
-.whatsapp-number-input input {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
 }
 
 .custom-notes-section {
@@ -1072,7 +881,6 @@
 .custom-notes-section label {
     display: block;
     font-weight: 600;
-    color: #374151;
     margin-bottom: 8px;
     font-size: 14px;
 }
@@ -1086,44 +894,202 @@
     font-family: inherit;
     resize: vertical;
     min-height: 80px;
+    box-sizing: border-box;
 }
 
-.custom-notes-section small {
-    display: block;
-    margin-top: 4px;
-    color: #6b7280;
-    font-size: 12px;
-}
-
+/* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
+    .job-detail-container {
+        padding: 16px 12px;
+    }
+
     .job-header {
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
         text-align: center;
+        padding: 18px 16px;
+        margin-bottom: 20px;
+    }
+
+    .job-info h1 {
+        font-size: 20px;
     }
 
     .job-meta {
+        font-size: 13px;
         justify-content: center;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .status-badge {
+        font-size: 12px;
+        padding: 7px 14px;
+    }
+
+    .status-workflow {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .status-workflow h3 {
+        font-size: 16px;
+        margin-bottom: 14px;
     }
 
     .workflow-steps {
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        overflow: visible;
+    }
+
+    .workflow-step {
+        min-width: 0;
+    }
+
+    .step-indicator {
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+    }
+
+    .step-label {
+        font-size: 11px;
+    }
+
+    .quick-actions {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .quick-actions h3 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+
+    .action-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .action-btn {
+        width: 100%;
+        padding: 11px 8px;
+        font-size: 13px;
+        text-align: center;
     }
 
     .content-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .info-panel {
+        padding: 16px;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .info-panel h3 {
+        font-size: 16px;
+        margin-bottom: 14px;
+    }
+
+    .info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .info-item label {
+        font-size: 11px;
+    }
+
+    .info-value {
+        font-size: 13.5px;
+        word-break: break-word;
+    }
+
+    .service-item,
+    .part-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .service-actions,
+    .part-actions {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .inline-form {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .inline-form select,
+    .inline-form input,
+    .responsive-select {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+        font-size: 13px !important;
+    }
+
+    .inline-form button {
+        width: 100%;
+    }
+
+    select option {
+        font-size: 13px;
+    }
+
+    .notes-content {
+        font-size: 14px;
+    }
+
+    .back-button-cell {
+        justify-content: stretch;
+    }
+
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .workflow-steps {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .job-info h1 {
+        font-size: 18px;
     }
 
     .info-grid {
         grid-template-columns: 1fr;
     }
 
-    .action-buttons {
-        flex-direction: column;
+    .action-btn {
+        font-size: 12.5px;
+        padding: 10px 6px;
     }
 
-    .action-btn {
-        width: 100%;
+    .inline-form select,
+    .responsive-select {
+        font-size: 12.5px !important;
+    }
+
+    select option {
+        font-size: 12.5px;
     }
 }
 </style>
@@ -1150,7 +1116,6 @@ function changeStatus(status) {
     document.getElementById('statusInput').value = status;
     document.getElementById('statusModal').classList.add('active');
     
-    // Reset WhatsApp number input if exists
     const whatsappInput = document.getElementById('customerWhatsappNumber');
     if (whatsappInput) {
         whatsappInput.value = '+94';
@@ -1158,11 +1123,8 @@ function changeStatus(status) {
         document.getElementById('sendWhatsapp').checked = false;
     }
     
-    // Reset custom notes
     const notesInput = document.getElementById('customNotes');
-    if (notesInput) {
-        notesInput.value = '';
-    }
+    if (notesInput) notesInput.value = '';
 }
 
 function toggleWhatsappCheckbox() {
@@ -1182,20 +1144,6 @@ function toggleWhatsappCheckbox() {
 
 function closeStatusModal() {
     document.getElementById('statusModal').classList.remove('active');
-
-    // Reset WhatsApp number input if exists
-    const whatsappInput = document.getElementById('customerWhatsappNumber');
-    if (whatsappInput) {
-        whatsappInput.value = '+94';
-        document.getElementById('sendWhatsapp').disabled = true;
-        document.getElementById('sendWhatsapp').checked = false;
-    }
-
-    // Reset custom notes
-    const notesInput = document.getElementById('customNotes');
-    if (notesInput) {
-        notesInput.value = '';
-    }
 }
 
 let currentCloseType = '';
@@ -1204,26 +1152,19 @@ let currentCloseId = '';
 function showCloseModal(type, id, name) {
     currentCloseType = type;
     currentCloseId = id;
-    const modal = document.getElementById('closeModal');
-    const message = document.getElementById('closeModalMessage');
-    message.textContent = `Are you sure you want to close this ${type}: ${name}?`;
-    modal.classList.add('active');
+    document.getElementById('closeModalMessage').textContent = `Are you sure you want to close this ${type}: ${name}?`;
+    document.getElementById('closeModal').classList.add('active');
 }
 
 function closeCloseModal() {
     document.getElementById('closeModal').classList.remove('active');
-    currentCloseType = '';
-    currentCloseId = '';
 }
 
 function confirmClose() {
     const jobId = '{{ $job->id }}';
-    let url = '';
-    if (currentCloseType === 'service') {
-        url = `/jobs/${jobId}/services/${currentCloseId}/remove`;
-    } else if (currentCloseType === 'part') {
-        url = `/jobs/${jobId}/parts/${currentCloseId}/remove`;
-    }
+    let url = currentCloseType === 'service' 
+        ? `/jobs/${jobId}/services/${currentCloseId}/remove`
+        : `/jobs/${jobId}/parts/${currentCloseId}/remove`;
 
     fetch(url, {
         method: 'DELETE',
@@ -1232,60 +1173,31 @@ function confirmClose() {
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
             closeCloseModal();
-            showNotification(data.message || 'Closed successfully', 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            window.location.reload();
         } else {
-            showNotification(data.message || 'Error closing item', 'error');
+            alert(data.message || 'Error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Error closing item', 'error');
     });
 }
 
-function showNotification(message, type) {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.classList.add('show');
-    }, 10);
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    }, 3000);
-}
-
-// Add form data before submission
 document.getElementById('statusForm').addEventListener('submit', function(e) {
+    e.preventDefault();
     const formData = new FormData(this);
+    formData.append('send_whatsapp', document.getElementById('sendWhatsapp')?.checked ? '1' : '0');
     
-    formData.append('send_whatsapp', document.getElementById('sendWhatsapp').checked ? '1' : '0');
-    
-    // Add WhatsApp number if provided
     const whatsappInput = document.getElementById('customerWhatsappNumber');
     if (whatsappInput && whatsappInput.value.trim() && whatsappInput.value.trim() !== '+94') {
         formData.append('customer_whatsapp_number', whatsappInput.value.trim());
     }
     
-    // Add custom notes if provided
     const notesInput = document.getElementById('customNotes');
     if (notesInput && notesInput.value.trim()) {
         formData.append('custom_notes', notesInput.value.trim());
     }
-    
-    // Replace form submission with FormData
-    e.preventDefault();
     
     fetch(this.action, {
         method: 'POST',
@@ -1295,84 +1207,50 @@ document.getElementById('statusForm').addEventListener('submit', function(e) {
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // If WhatsApp URL is provided, open it in new tab
-            if (data.whatsapp_url) {
-                window.open(data.whatsapp_url, '_blank');
-                // Reload page after a delay to allow WhatsApp to open
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                // Reload immediately if no WhatsApp
-                window.location.reload();
-            }
+            if (data.whatsapp_url) window.open(data.whatsapp_url, '_blank');
+            setTimeout(() => window.location.reload(), 800);
         } else {
-            alert('Error updating status: ' + (data.message || 'Unknown error'));
+            alert(data.message || 'Error');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating status');
     });
 });
 
-function resumeFromHold() {
-    const currentStatus = '{{ $job->status->value }}';
-    let resumeTo = 'checked_in';
-
-    if (currentStatus === 'on_hold') {
-        // Default to checked_in, user can change if needed
-        resumeTo = 'checked_in';
-    }
-
-    changeStatus(resumeTo);
-}
-
 function updateSellingPrice() {
     const select = document.getElementById('productSelect');
-    const selectedOption = select.options[select.selectedIndex];
+    const option = select.options[select.selectedIndex];
     const priceInput = document.getElementById('unitPriceInput');
-    if (selectedOption.value) {
-        priceInput.value = selectedOption.getAttribute('data-price');
-    } else {
-        priceInput.value = '';
-    }
+    priceInput.value = option.value ? option.getAttribute('data-price') : '';
 }
 
 function updateStockInfo() {
     const select = document.getElementById('productSelect');
-    const selectedOption = select.options[select.selectedIndex];
-    const stockWarning = document.getElementById('stockWarning');
-    const quantityInput = document.querySelector('input[name="quantity"]');
+    const option = select.options[select.selectedIndex];
+    const warning = document.getElementById('stockWarning');
+    const qty = parseFloat(document.querySelector('input[name="quantity"]').value) || 1;
 
-    if (selectedOption.value) {
-        const availableStock = parseFloat(selectedOption.getAttribute('data-stock'));
-        const requestedQty = parseFloat(quantityInput.value) || 1;
-
-        if (availableStock === 0) {
-            stockWarning.textContent = '⚠️ This product is out of stock!';
-            stockWarning.style.display = 'block';
-        } else if (availableStock < requestedQty) {
-            stockWarning.textContent = '⚠️ Insufficient stock. Available: ' + availableStock + ', Requested: ' + requestedQty;
-            stockWarning.style.display = 'block';
+    if (option.value) {
+        const stock = parseFloat(option.getAttribute('data-stock'));
+        if (stock === 0) {
+            warning.textContent = '⚠️ This product is out of stock!';
+            warning.style.display = 'block';
+        } else if (stock < qty) {
+            warning.textContent = `⚠️ Insufficient stock. Available: ${stock}`;
+            warning.style.display = 'block';
         } else {
-            stockWarning.style.display = 'none';
+            warning.style.display = 'none';
         }
     } else {
-        stockWarning.style.display = 'none';
+        warning.style.display = 'none';
     }
 }
 
-document.querySelector('input[name="quantity"]').addEventListener('input', updateStockInfo);
+document.querySelector('input[name="quantity"]')?.addEventListener('input', updateStockInfo);
 
-// Close modal on outside click
 document.getElementById('statusModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeStatusModal();
-    }
+    if (e.target === this) closeStatusModal();
 });
 </script>
 @endsection

@@ -31,17 +31,36 @@ class ReportController extends Controller
 
         $sales = Invoice::whereBetween('created_at', [$startDate, $endDate])
             ->with('customer', 'job.vehicle')
-            ->get();
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
 
-        $totalRevenue = $sales->sum('total');
-        $totalPaid = $sales->sum('paid');
-        $totalOutstanding = $sales->sum('balance');
+        // Totals should be calculated on the full filtered set (not just current page)
+        $totals = Invoice::whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('
+                COALESCE(SUM(total), 0) as total_revenue,
+                COALESCE(SUM(paid), 0) as total_paid,
+                COALESCE(SUM(balance), 0) as total_outstanding
+            ')
+            ->first();
 
-        return view('reports.sales', compact('sales', 'startDate', 'endDate', 'totalRevenue', 'totalPaid', 'totalOutstanding'));
+        $totalRevenue = $totals->total_revenue;
+        $totalPaid = $totals->total_paid;
+        $totalOutstanding = $totals->total_outstanding;
+
+        return view('reports.sales', compact(
+            'sales',
+            'startDate',
+            'endDate',
+            'totalRevenue',
+            'totalPaid',
+            'totalOutstanding'
+        ));
     }
 
     public function stockReport(Request $request)
     {
+        // Paginated list
         $stock = DB::table('inventory')
             ->join('products', 'products.id', '=', 'inventory.product_id')
             ->select(
@@ -53,10 +72,21 @@ class ReportController extends Controller
                 DB::raw('inventory.quantity * products.cost_price as total_cost'),
                 DB::raw('inventory.quantity * products.selling_price as total_value')
             )
-            ->get();
+            ->orderBy('products.name')
+            ->paginate(20)
+            ->withQueryString();
 
-        $totalStockValue = $stock->sum('total_cost');
-        $totalRetailValue = $stock->sum('total_value');
+        // Totals on the full dataset
+        $totals = DB::table('inventory')
+            ->join('products', 'products.id', '=', 'inventory.product_id')
+            ->selectRaw('
+                COALESCE(SUM(inventory.quantity * products.cost_price), 0) as total_stock_value,
+                COALESCE(SUM(inventory.quantity * products.selling_price), 0) as total_retail_value
+            ')
+            ->first();
+
+        $totalStockValue = $totals->total_stock_value;
+        $totalRetailValue = $totals->total_retail_value;
 
         return view('reports.stock', compact('stock', 'totalStockValue', 'totalRetailValue'));
     }
@@ -75,7 +105,8 @@ class ReportController extends Controller
                 'products.sku'
             )
             ->orderBy('inventory_movements.created_at', 'desc')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
         return view('reports.stock_movement', compact('movements', 'startDate', 'endDate'));
     }
@@ -85,6 +116,8 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', now()->endOfDay()->format('Y-m-d'));
 
+        // This one is aggregated, so we keep it as collection for now
+        // (you can paginate later if needed)
         $services = Job::whereBetween('created_at', [$startDate, $endDate])
             ->with('jobServices.service')
             ->get();
@@ -112,13 +145,14 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->format('Y-m-d'));
         $endDate = $request->input('end_date', now()->endOfDay()->format('Y-m-d'));
 
-        $customers = Customer::with(['jobs' => function($query) use ($startDate, $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        }])
-        ->whereHas('jobs', function($query) use ($startDate, $endDate) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        })
-        ->get();
+        $customers = Customer::with(['jobs' => function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            }])
+            ->whereHas('jobs', function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            })
+            ->paginate(20)
+            ->withQueryString();
 
         return view('reports.customers', compact('customers', 'startDate', 'endDate'));
     }

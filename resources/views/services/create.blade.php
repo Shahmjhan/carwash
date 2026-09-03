@@ -5,7 +5,6 @@
         <h1>Create Service</h1>
         <p>Add a new service type</p>
     </div>
-    <a href="{{ route('services.index') }}" style="background:#10b981;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:500;transition:all 0.2s;">← Back to Services</a>
 </div>
 
 <div class="panel">
@@ -64,8 +63,16 @@
                 </div>
             </div>
         </div>
-        <div style="margin-top:30px;">
-            <button type="submit" class="primary" style="background:#3b82f6;padding:12px 24px;border-radius:8px;border:none;color:white;font-weight:500;cursor:pointer;transition:all 0.2s;">Create Service</button>
+
+        <div class="form-actions">
+            <button type="submit" class="primary" style="background:#3b82f6;padding:12px 24px;border-radius:8px;border:none;color:white;font-weight:500;cursor:pointer;">Create Service</button>
+            <a href="{{ url()->previous() }}" class="btn-cancel">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                Cancel
+            </a>
         </div>
     </form>
 </div>
@@ -101,35 +108,21 @@
 <script>
 function openCategoryModal() {
     const modal = document.getElementById('categoryModal');
-    if (modal) {
-        modal.style.display = 'flex';
-    }
+    if (modal) modal.style.display = 'flex';
 }
-
 function closeCategoryModal() {
     const modal = document.getElementById('categoryModal');
     const form = document.getElementById('categoryForm');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    if (form) {
-        form.reset();
-    }
+    if (modal) modal.style.display = 'none';
+    if (form) form.reset();
 }
-
 document.addEventListener('DOMContentLoaded', function() {
     const categoryForm = document.getElementById('categoryForm');
     if (categoryForm) {
         categoryForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            const formData = new FormData(this);
             const categoryName = document.getElementById('categoryName').value;
             const categoryActive = document.getElementById('categoryActive').checked;
-            
-            console.log('Submitting category:', categoryName, 'Active:', categoryActive);
-            console.log('Route:', '{{ route('service-categories.store') }}');
-            
             fetch('{{ route('service-categories.store') }}', {
                 method: 'POST',
                 headers: {
@@ -137,17 +130,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    name: categoryName,
-                    active: categoryActive
-                })
+                body: JSON.stringify({ name: categoryName, active: categoryActive })
             })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Response data:', data);
                 if (data.success) {
                     const select = document.getElementById('categorySelect');
                     const option = document.createElement('option');
@@ -157,18 +143,53 @@ document.addEventListener('DOMContentLoaded', function() {
                     select.appendChild(option);
                     closeCategoryModal();
                 } else {
-                    console.error('Error creating category:', data.error);
                     alert('Error creating category: ' + (data.error || 'Unknown error'));
                 }
             })
             .catch(error => {
-                console.error('Fetch error:', error);
                 alert('Error creating category. Please try again.');
             });
         });
-    } else {
-        console.error('Category form not found');
     }
 });
 </script>
+
+<style>
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    gap: 12px;
+}
+.btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #fee2e2;
+    color: #dc2626;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.btn-cancel:hover {
+    background: #fecaca;
+    color: #b91c1c;
+}
+@media (max-width: 640px) {
+    .form-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .form-actions .primary,
+    .form-actions .btn-cancel {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+}
+</style>
 @endsection
