@@ -74,12 +74,12 @@
 <style>
 .reports-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);   /* always 2 columns */
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
     margin-top: 30px;
 }
 
-/* On wider screens allow 3 columns */
+/* Desktop - 3 columns, last card stays normal size */
 @media (min-width: 900px) {
     .reports-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -149,14 +149,9 @@
     box-shadow: 0 4px 6px rgba(236, 72, 153, 0.2);
 }
 
-/* Make the last odd card stretch full width */
-.reports-grid .report-card:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-}
-
-/* On 3-column layout, make last card stretch if it's alone */
-@media (min-width: 900px) {
-    .reports-grid .report-card:last-child:nth-child(3n+1) {
+/* Only stretch the last card on mobile (2-column layout) */
+@media (max-width: 899px) {
+    .reports-grid .report-card:last-child:nth-child(odd) {
         grid-column: 1 / -1;
     }
 }

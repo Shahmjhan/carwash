@@ -67,6 +67,11 @@
     </section>
 </div>
 
+{{-- Back button (centered) --}}
+<div class="page-back">
+    <a href="{{ route('customers.index') }}" class="back-button">← Back</a>
+</div>
+
 <style>
 /* ========== STATS: always 2 per row ========== */
 .stats {
@@ -149,6 +154,32 @@
     color: #9ca3af;
     font-size: 14px;
     padding: 12px 0;
+}
+
+/* Back button - centered */
+.page-back {
+    margin-top: 28px;
+    display: flex;
+    justify-content: center;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.back-button:hover {
+    background: #d1d5db;
+    color: #111827;
 }
 
 /* ========== MOBILE ========== */

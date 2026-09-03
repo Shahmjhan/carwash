@@ -267,6 +267,17 @@
                 {{ $job->notes ?: 'No notes added' }}
             </div>
         </div>
+
+        <!-- Back button -->
+        <div class="back-button-cell">
+            <a href="javascript:history.back()" class="btn-back">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back
+            </a>
+        </div>
     </div>
 
     @if($job->invoice)
@@ -340,7 +351,7 @@
 </div>
 
 <style>
-/* ========== DESKTOP (UNTOUCHED) ========== */
+/* ========== DESKTOP ========== */
 .job-detail-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -713,7 +724,6 @@
     cursor: pointer;
 }
 
-/* Responsive select styling */
 .responsive-select {
     width: 100%;
     max-width: 100%;
@@ -737,8 +747,36 @@
     white-space: pre-wrap;
 }
 
+/* Back button cell - aligns bottom with Notes card */
+.back-button-cell {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    min-height: 0;
+}
+
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.btn-back:hover {
+    background: #d1d5db;
+    color: #111827;
+}
+
 .invoice-link {
     text-align: center;
+    margin-top: 16px;
 }
 
 .btn-primary {
@@ -859,7 +897,7 @@
     box-sizing: border-box;
 }
 
-/* ========== RESPONSIVE ONLY ========== */
+/* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
     .job-detail-container {
         padding: 16px 12px;
@@ -990,7 +1028,6 @@
         gap: 8px;
     }
 
-    /* ===== DROPDOWN FIX ===== */
     .inline-form {
         flex-direction: column;
         width: 100%;
@@ -1010,13 +1047,21 @@
         width: 100%;
     }
 
-    /* Make dropdown options smaller so they don't overflow */
     select option {
         font-size: 13px;
     }
 
     .notes-content {
         font-size: 14px;
+    }
+
+    .back-button-cell {
+        justify-content: stretch;
+    }
+
+    .btn-back {
+        width: 100%;
+        justify-content: center;
     }
 }
 

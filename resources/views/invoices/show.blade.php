@@ -26,7 +26,6 @@
 
 <div class="invoice-wrapper">
     <div class="panel invoice-panel">
-
         <!-- Invoice Header -->
         <div class="invoice-header">
             <div>
@@ -156,6 +155,15 @@
                     </div>
                     <button type="submit" class="primary">Receive Payment</button>
                 </form>
+                <div class="payment-back">
+                    <a href="javascript:history.back()" class="btn-back">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        Back
+                    </a>
+                </div>
             @else
                 <div class="paid-full">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">
@@ -163,6 +171,15 @@
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
                     <span>Paid in full</span>
+                </div>
+                <div class="payment-back">
+                    <a href="javascript:history.back()" class="btn-back">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        Back
+                    </a>
                 </div>
             @endif
         </div>
@@ -190,7 +207,6 @@
             @endforeach
         </div>
         @endif
-
     </div>
 </div>
 
@@ -199,7 +215,6 @@
     max-width: 900px;
     margin: 0 auto;
 }
-
 .invoice-panel {
     background: white;
     border: 1px solid #e5e7eb;
@@ -207,7 +222,6 @@
     padding: 40px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
-
 /* Header */
 .invoice-header {
     display: flex;
@@ -218,30 +232,25 @@
     border-bottom: 2px solid #e5e7eb;
     gap: 20px;
 }
-
 .invoice-logo {
     max-height: 80px;
     margin-bottom: 15px;
 }
-
 .company-name {
     margin: 0 0 10px 0;
     color: #1a1a2e;
     font-size: 28px;
     font-weight: 800;
 }
-
 .invoice-meta {
     text-align: right;
 }
-
 .invoice-meta h3 {
     margin: 0 0 10px 0;
     color: #1a1a2e;
     font-size: 24px;
     font-weight: 700;
 }
-
 .status-badge {
     margin-top: 15px;
     padding: 8px 16px;
@@ -250,17 +259,14 @@
     font-weight: 600;
     font-size: 13px;
 }
-
 .status-badge.unpaid {
     background: #fee2e2;
     color: #dc2626;
 }
-
 .status-badge.paid {
     background: #dcfce7;
     color: #16a34a;
 }
-
 /* Bill To */
 .bill-to {
     display: flex;
@@ -268,14 +274,12 @@
     margin-bottom: 30px;
     gap: 20px;
 }
-
 .bill-to h4 {
     margin: 0 0 15px 0;
     color: #1a1a2e;
     font-size: 16px;
     font-weight: 600;
 }
-
 /* ========== TABLE ========== */
 .invoice-table {
     width: 100%;
@@ -283,7 +287,6 @@
     margin-bottom: 30px;
     table-layout: fixed;
 }
-
 .invoice-table th {
     padding: 12px 6px;
     text-align: left;
@@ -293,7 +296,6 @@
     background: #f8fafc;
     border-bottom: 2px solid #e5e7eb;
 }
-
 .invoice-table td {
     padding: 12px 6px;
     color: #374151;
@@ -301,53 +303,42 @@
     border-bottom: 1px solid #f1f5f9;
     vertical-align: top;
 }
-
 .invoice-table .text-center { text-align: center; }
 .invoice-table .text-right  { text-align: right; }
-
-/* Better column widths */
 .invoice-table th:nth-child(1),
 .invoice-table td:nth-child(1) { 
     width: 38%; 
     padding-right: 8px;
 }
-
 .invoice-table th:nth-child(2),
 .invoice-table td:nth-child(2) { 
     width: 14%; 
 }
-
 .invoice-table th:nth-child(3),
 .invoice-table td:nth-child(3) { 
     width: 24%; 
     padding-left: 4px;
     padding-right: 4px;
 }
-
 .invoice-table th:nth-child(4),
 .invoice-table td:nth-child(4) { 
     width: 24%; 
     padding-left: 4px;
 }
-
-/* Prevent number overlapping */
 .invoice-table td.text-right {
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
-
 /* Totals */
 .totals {
     display: flex;
     justify-content: flex-end;
     margin-bottom: 30px;
 }
-
 .totals-box {
     width: 100%;
     max-width: 320px;
 }
-
 .total-row {
     display: flex;
     justify-content: space-between;
@@ -356,12 +347,10 @@
     font-size: 14px;
     color: #667085;
 }
-
 .total-row span:last-child {
     font-weight: 600;
     color: #374151;
 }
-
 .total-final {
     background: #f8fafc;
     border-radius: 8px;
@@ -369,24 +358,20 @@
     padding: 15px;
     border-bottom: none;
 }
-
 .total-final span {
     font-size: 16px;
     font-weight: 700;
     color: #1a1a2e;
 }
-
 .balance {
     border-top: 2px solid #e5e7eb;
     padding-top: 12px;
     margin-top: 4px;
 }
-
 .balance span {
     font-size: 16px;
     font-weight: 700;
 }
-
 /* Payment */
 .payment-section {
     background: #f8fafc;
@@ -394,26 +379,22 @@
     padding: 25px;
     margin-top: 30px;
 }
-
 .payment-section h3 {
     margin: 0 0 20px 0;
     color: #1a1a2e;
     font-size: 18px;
     font-weight: 700;
 }
-
 .payment-form {
     display: flex;
     gap: 15px;
     align-items: flex-end;
     flex-wrap: wrap;
 }
-
 .payment-form > div {
     flex: 1;
     min-width: 180px;
 }
-
 .payment-form label {
     display: block;
     margin-bottom: 8px;
@@ -421,7 +402,6 @@
     font-size: 14px;
     font-weight: 600;
 }
-
 .payment-form input,
 .payment-form select {
     width: 100%;
@@ -430,7 +410,28 @@
     border-radius: 8px;
     font-size: 14px;
 }
-
+.payment-back {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;   /* ← Centers the Back button */
+}
+.btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.btn-back:hover {
+    background: #d1d5db;
+    color: #111827;
+}
 .paid-full {
     display: flex;
     align-items: center;
@@ -443,19 +444,16 @@
     font-weight: 600;
     font-size: 14px;
 }
-
 /* Payment History */
 .payment-history {
     margin-top: 30px;
 }
-
 .payment-history h3 {
     margin: 0 0 15px 0;
     color: #1a1a2e;
     font-size: 18px;
     font-weight: 700;
 }
-
 .payment-item {
     display: flex;
     justify-content: space-between;
@@ -466,13 +464,11 @@
     border-radius: 8px;
     margin-bottom: 10px;
 }
-
 .payment-info {
     display: flex;
     align-items: center;
     gap: 15px;
 }
-
 .payment-icon {
     width: 40px;
     height: 40px;
@@ -482,7 +478,6 @@
     align-items: center;
     justify-content: center;
 }
-
 /* Helpers */
 .muted { color: #667085; font-size: 14px; margin: 5px 0; }
 .strong { font-weight: 600; color: #374151; }
@@ -491,13 +486,11 @@
 .text-green { color: #10b981 !important; }
 .text-blue { color: #2563eb !important; }
 .text-red { color: #dc2626 !important; }
-
 .page-head-actions {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
-
 /* ========== MOBILE ========== */
 @media (max-width: 768px) {
     .page-head {
@@ -505,72 +498,59 @@
         align-items: flex-start;
         gap: 12px;
     }
-
     .page-head-actions {
         width: 100%;
     }
-
     .page-head-actions a {
         flex: 1;
         text-align: center;
     }
-
     .invoice-panel {
         padding: 20px;
     }
-
     .invoice-header {
         flex-direction: column;
         gap: 24px;
     }
-
     .invoice-meta {
         text-align: left;
     }
-
     .bill-to {
         flex-direction: column;
         gap: 24px;
     }
-
     .bill-to .text-right {
         text-align: left;
     }
-
     .totals-box {
         max-width: 100%;
     }
-
     .payment-form {
         flex-direction: column;
     }
-
     .payment-form > div {
         min-width: 100%;
     }
-
-    /* Compact table on mobile */
+    .btn-back {
+        width: 100%;
+        justify-content: center;
+    }
     .invoice-table th,
     .invoice-table td {
         padding: 10px 4px;
         font-size: 12.5px;
     }
-
     .invoice-table td.desc {
         word-break: break-word;
         white-space: normal;
         line-height: 1.35;
     }
-
     .invoice-table th:nth-child(1),
     .invoice-table td:nth-child(1) { width: 36%; }
-
     .invoice-table th:nth-child(2),
     .invoice-table td:nth-child(2) { width: 14%; }
-
     .invoice-table th:nth-child(3),
     .invoice-table td:nth-child(3) { width: 25%; }
-
     .invoice-table th:nth-child(4),
     .invoice-table td:nth-child(4) { width: 25%; }
 }

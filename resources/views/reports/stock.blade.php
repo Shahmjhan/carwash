@@ -21,7 +21,6 @@
         <p>Current inventory levels, costs, and retail values.</p>
     </div>
     <div class="page-head-actions">
-        <a href="{{ route('reports') }}" class="secondary">← Back</a>
         <button onclick="window.print()" class="primary">📄 Print PDF</button>
         <button onclick="printThermal()" class="secondary" style="background:#f59e0b;color:white;">🖨️ Thermal</button>
     </div>
@@ -120,6 +119,11 @@
     <!-- Pagination -->
     <div class="pagination-wrap no-print">
         {{ $stock->links() }}
+    </div>
+
+    <!-- Back button (one row below, right aligned) -->
+    <div class="report-back no-print">
+        <a href="{{ route('reports') }}" class="back-button">← Back</a>
     </div>
 </div>
 
@@ -304,6 +308,32 @@
     margin-top: 24px;
 }
 
+/* Back button - one row below, right aligned */
+.report-back {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.back-button:hover {
+    background: #d1d5db;
+    color: #111827;
+}
+
 /* ========== MOBILE ========== */
 @media (max-width: 768px) {
     .page-head {
@@ -338,6 +368,10 @@
 
     .report-cards {
         display: grid;
+    }
+
+    .report-back {
+        justify-content: center;
     }
 }
 </style>

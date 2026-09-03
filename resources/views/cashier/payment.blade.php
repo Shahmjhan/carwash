@@ -3,12 +3,6 @@
 <div class="payment-page">
     <div class="payment-header">
         <div class="header-content">
-            <a href="{{ route('cashier.index') }}" class="back-button">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-                Back to Dashboard
-            </a>
             <h1>Payment Processing</h1>
             <p>{{ $job->vehicle->registration_number }} · {{ $job->customer->full_name }}</p>
         </div>
@@ -293,6 +287,16 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                     </svg>
                 </button>
+
+                {{-- Back button below Process Payment --}}
+                <div class="payment-back">
+                    <a href="{{ route('cashier.index') }}" class="back-button">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Dashboard
+                    </a>
+                </div>
             </form>
         </div>
         @else
@@ -320,32 +324,13 @@
     color: #1e293b;
     font-size: 32px;
     font-weight: 700;
-    margin: 8px 0 4px 0;
+    margin: 0 0 4px 0;
 }
 
 .header-content p {
     color: #64748b;
     font-size: 16px;
     margin: 0;
-}
-
-.back-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: #64748b;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-}
-
-.back-button:hover {
-    background: #f1f5f9;
-    color: #475569;
 }
 
 /* ===== MAIN GRID ===== */
@@ -558,7 +543,6 @@
 .method-label {
     font-size: 13px;
     font-weight: 600;
-    color: #475569;
 }
 
 .split-toggle {
@@ -755,6 +739,33 @@
     margin-top: 24px;
 }
 
+/* Back button below Process Payment */
+.payment-back {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 12px 20px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s;
+}
+
+.back-button:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
     .payment-header {
@@ -850,6 +861,11 @@
     .process-button {
         padding: 16px 20px;
         font-size: 16px;
+    }
+
+    .back-button {
+        width: 100%;
+        justify-content: center;
     }
 }
 

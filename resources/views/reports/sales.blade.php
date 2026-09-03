@@ -21,7 +21,6 @@
         <p>Revenue, payments, and outstanding balances.</p>
     </div>
     <div class="page-head-actions">
-        <a href="{{ route('reports') }}" class="secondary">← Back</a>
         <button onclick="window.print()" class="primary">📄 Print PDF</button>
         <button onclick="printThermal()" class="secondary" style="background:#f59e0b;color:white;">🖨️ Thermal</button>
     </div>
@@ -145,6 +144,11 @@
 
     <div class="report-footer">
         <p>Generated on {{ now()->format('Y-m-d H:i:s') }}</p>
+    </div>
+
+    <!-- Back button (one row below Generated text, right aligned) -->
+    <div class="report-back no-print">
+        <a href="{{ route('reports') }}" class="back-button">← Back</a>
     </div>
 </div>
 
@@ -372,6 +376,32 @@
     font-size: 12px;
 }
 
+/* Back button - one row below Generated text, right aligned */
+.report-back {
+    margin-top: 24px;          /* creates one empty row space */
+    display: flex;
+    justify-content: flex-end; /* right corner */
+}
+
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 18px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.back-button:hover {
+    background: #d1d5db;
+    color: #111827;
+}
+
 /* ========== MOBILE ========== */
 @media (max-width: 768px) {
     .page-head {
@@ -415,6 +445,10 @@
 
     .report-cards {
         display: grid;
+    }
+
+    .report-back {
+        justify-content: center; /* center on mobile if preferred, or keep flex-end */
     }
 }
 </style>
